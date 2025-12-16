@@ -4,6 +4,6 @@ uses MQTT Broker, local on windows, raspberry pi, or amazon aws
 
 python agent runs on rigs to collect stats on demand, accept commands
 
-added visual studio project files in repos
+added visual studio project files in repos to make development a little easier
 
 added setup notes for mosquitto-bridge mode in repos
