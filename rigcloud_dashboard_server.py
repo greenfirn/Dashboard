@@ -4,6 +4,9 @@ import asyncio
 import json
 import threading
 import time
+import subprocess
+import psutil
+
 from pathlib import Path
 from typing import Dict, Any, List
 
@@ -15,14 +18,27 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
-# ================================================================
-# MQTT CONFIG
-# ================================================================
-#MQTT_MODE = "local"  # "local" or "aws"
+router = APIRouter()
 
-MQTT_MODE = os.getenv("MQTT_MODE", "local")
+# ================================================================
+# MQTT CONFIG ... https://mosquitto.org/download/
+# ================================================================
+# MQTT_MODE "local" or "pi", "aws"
+
+MQTT_MODE = os.getenv("MQTT_MODE", "pi")
 
 if MQTT_MODE == "local":
+    MQTT_BROKER = os.getenv("MQTT_HOST", "127.0.0.1")
+    MQTT_PORT   = int(os.getenv("MQTT_PORT", "1883"))
+    MQTT_USER   = os.getenv("MQTT_USER", "admin")
+    MQTT_PASS   = os.getenv("MQTT_PASS", "")
+
+    MQTT_CERT = None
+    MQTT_KEY  = None
+    MQTT_CA   = None
+    BASE_PATH = os.getenv("BASE_PATH", "/dashboard")
+    
+elif MQTT_MODE == "pi":
     MQTT_BROKER = os.getenv("MQTT_HOST", "mosquitto")
     MQTT_PORT   = int(os.getenv("MQTT_PORT", "1883"))
     MQTT_USER   = os.getenv("MQTT_USER", "admin")
@@ -31,6 +47,7 @@ if MQTT_MODE == "local":
     MQTT_CERT = None
     MQTT_KEY  = None
     MQTT_CA   = None
+    BASE_PATH = os.getenv("BASE_PATH", "")
 
 elif MQTT_MODE == "aws":
     MQTT_BROKER = os.getenv("AWS_MQTT_HOST")  # *.iot.<region>.amazonaws.com
@@ -42,6 +59,7 @@ elif MQTT_MODE == "aws":
 
     MQTT_USER = None
     MQTT_PASS = None
+    BASE_PATH = os.getenv("BASE_PATH", "")
 
 else:
     raise RuntimeError(f"Invalid MQTT_MODE: {MQTT_MODE}")
@@ -49,9 +67,10 @@ else:
 # ================================================================
 # CONFIG (env overrides)
 # ================================================================
+
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
-BASE_PATH = os.getenv("BASE_PATH", "")
+
 API_BIND = os.getenv("API_BIND", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "8765"))
 
@@ -59,9 +78,13 @@ MQTT_TOPIC_FILTER = os.getenv("MQTT_TOPIC_FILTER", "rigcloud/+/status")
 
 BROADCAST_INTERVAL = float(os.getenv("BROADCAST_INTERVAL", "10"))
 
+MOSQUITTO_EXE = r"C:\Program Files\mosquitto\mosquitto.exe"
+MOSQUITTO_CONF = r"C:\Program Files\mosquitto\mosquitto.conf"
+
 # ================================================================
 # GLOBAL STATE
 # ================================================================
+
 CMD_ALL_TOPIC = "rigcloud/all/cmd"
 
 mqtt_client = None  # shared MQTT publisher (created in mqtt thread)
@@ -86,6 +109,7 @@ clients_lock = asyncio.Lock()
 # ================================================================
 # RIG REGISTRY (identity cache)
 # ================================================================
+
 known_rigs: set[str] = set()
 known_rigs_lock = threading.Lock()
 
@@ -97,42 +121,67 @@ def log(msg: str) -> None:
     print(f"[{ts}] [RigCloud] {msg}", flush=True)
 
 # ================================================================
-# FASTAPI LIFESPAN
+# MOSQUITTO START
 # ================================================================
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global main_loop, broadcast_stop, broadcast_task
-    main_loop = asyncio.get_running_loop()
-    broadcast_stop = asyncio.Event()
-    log("[Startup] Dashboard server starting")
-    yield
-    log("[Shutdown] Dashboard server stopping")
 
-    if broadcast_stop:
-        broadcast_stop.set()
-    broadcast_task = None
+def is_mosquitto_running():
+    #log("Checking if Mosquitto process is running...")
 
-app = FastAPI(lifespan=lifespan)
+    try:
+        for p in psutil.process_iter(["pid", "name"]):
+            name = p.info.get("name")
 
-# CORS (so dashboard can be opened from anywhere on LAN)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+            if not name:
+                continue
 
-STATIC_DIR = Path(__file__).parent / "static"
+            #log(f"Found process: pid={p.info['pid']} name={name}")
 
-app.mount(
-    "/static",
-    StaticFiles(directory=STATIC_DIR),
-    name="static"
-)
+            if "mosquitto" in name.lower():
+                #log("Mosquitto process detected")
+                return True
+
+        #log("Mosquitto process NOT found")
+        return False
+
+    except Exception as e:
+        log(f"ERROR while checking Mosquitto process: {e}")
+        return False
+
+def start_mosquitto():
+    #log("start_mosquitto() called")
+
+    if is_mosquitto_running():
+        log("Mosquitto already running — skipping startup")
+        return
+
+    #log("Mosquitto not running — attempting to start")
+
+    try:
+        log(f"Launching Mosquitto executable: {MOSQUITTO_EXE}")
+        log(f"Using config file: {MOSQUITTO_CONF}")
+        
+        # subprocess.CREATE_NO_WINDOW
+        
+        DETACHED = (
+            subprocess.DETACHED_PROCESS |
+            subprocess.CREATE_NEW_PROCESS_GROUP |
+            subprocess.CREATE_NO_WINDOW
+        )
+        subprocess.Popen(
+            [MOSQUITTO_EXE, "-c", MOSQUITTO_CONF],
+            creationflags=DETACHED,
+            close_fds=True
+        )
+
+        log("Mosquitto launch command issued")
+
+    except Exception as e:
+        log(f"ERROR starting Mosquitto: {e}")
 
 # ================================================================
 # BROADCAST LOOP
 # ================================================================
+
 async def broadcast_loop():
     log("[Broadcast] Loop started")
     global last_refresh_ts
@@ -208,26 +257,27 @@ async def broadcast_loop():
 # ================================================================
 # HTTP ROUTES
 # ================================================================
-@app.get("/")
+
+@router.get("/")
 def serve_root():
     index = STATIC_DIR / "index.html"
     if not index.exists():
         return {"error": "static/index.html missing in container"}
     return FileResponse(index)
 
-@app.get("/rigs")
+@router.get("/rigs")
 def get_rigs():
     """Return latest rigs snapshot (debug/API)."""
     with rigs_lock:
         snapshot = dict(rigs)
     return {"rigs": snapshot}
 
-@app.post("/refresh")
+@router.post("/refresh")
 def refresh_all():
     mqtt_publish(CMD_ALL_TOPIC, {"cmd": "refresh"})
     return {"status": "refresh sent"}
 
-@app.post("/reset")
+@router.post("/reset")
 def reset_known_rigs():
     global last_refresh_ts
     last_refresh_ts = time.time()
@@ -245,7 +295,8 @@ def reset_known_rigs():
 # ================================================================
 # WEBSOCKET ENDPOINT
 # ================================================================
-@app.websocket("/ws")
+
+@router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
 
@@ -290,6 +341,47 @@ async def websocket_endpoint(websocket: WebSocket):
 
             log("[Prune] Cleared live rig telemetry (preserved rig list)")
 
+# ================================================================
+# FASTAPI LIFESPAN
+# ================================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global main_loop, broadcast_stop, broadcast_task
+    main_loop = asyncio.get_running_loop()
+    broadcast_stop = asyncio.Event()
+    log("[Startup] Dashboard server starting")
+    yield
+    log("[Shutdown] Dashboard server stopping")
+
+    if broadcast_stop:
+        broadcast_stop.set()
+    broadcast_task = None
+
+# ================================================================
+# FastAPI
+# ================================================================
+
+app = FastAPI(lifespan=lifespan)
+
+if MQTT_MODE == "local":
+    app.include_router(router, prefix=BASE_PATH)
+else:
+    app.include_router(router)
+
+# CORS (so dashboard can be opened from anywhere on LAN)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount(
+    "/static",
+    StaticFiles(directory=STATIC_DIR),
+    name="static"
+)
 
 # ================================================================
 # MQTT CALLBACKS
@@ -376,7 +468,7 @@ def mqtt_thread_main():
         protocol=mqtt.MQTTv311
     )
 
-    if MQTT_MODE == "local":
+    if MQTT_MODE == "local" or MQTT_MODE == "pi":
         if MQTT_USER:
             mqtt_client.username_pw_set(MQTT_USER, MQTT_PASS)
 
@@ -404,7 +496,12 @@ def mqtt_thread_main():
 # ================================================================
 # ENTRY POINT
 # ================================================================
+
 if __name__ == "__main__":
+
+    if MQTT_MODE == "local":
+        start_mosquitto()
+    
     t = threading.Thread(target=mqtt_thread_main, daemon=True)
     t.start()
     uvicorn.run(app, host=API_BIND, port=API_PORT, log_level="info")
