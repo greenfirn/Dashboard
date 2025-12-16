@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RigCloud Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+<div id="action-bar">
+    <div class="action-buttons">
+        <button class="action-btn" title="Start">
+            ▶
+        </button>
+
+        <button class="action-btn" title="Stop">
+            ■
+        </button>
+
+        <button class="action-btn" title="Restart">
+            ↻
+        </button>
+
+        <button class="action-btn" id="btn-toggle-select" title="Select / Unselect all">
+            ✕
+        </button>
+    </div>
+</div>
+<div class="rig-header">
+    <div class="rig-main rig-header-grid">
+        <div class="header-item title-left">
+            <span class="reset-btn" title="Hard reset rigs" onclick="hardReset(event)">⟳</span>
+            <span>Name</span>
+        </div>
+        <div class="header-item metric">CPU °C</div>
+        <div class="header-item metric">CPU %</div>
+        <div class="header-item metric">LA ( 1m, 5m, 15m )</div>
+        <div class="header-item metric">RAM</div>
+        <div class="header-item metric">GPU °C</div>
+        <div class="header-item metric">GPU %</div>
+        <div class="header-item metric">Watts</div>
+        <div class="header-item metric">Fan</div>
+        <div class="header-item metric">VRAM</div>
+        <div class="header-item metric">Core</div>
+        <div class="header-item metric">Mem</div>
+        <div class="header-item metric">CPU</div>
+        <div class="header-item metric">GPU</div>
+        <div class="header-item title-left">Miner</div>
+        <div class="header-item metric">D</div>
+    </div>
+</div>
+<div id="rig-container"></div>
+<script src="/static/js/app.js"></script>
+</body>
+</html>

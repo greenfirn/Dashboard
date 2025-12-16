@@ -1,0 +1,33 @@
+
+curl http://127.0.0.1:8765/rigs
+
+docker exec -it caddy sh -c "apk add --no-cache curl"
+
+docker exec -it rigcloud-ws sh -c "
+apt-get update &&
+apt-get install -y curl
+"
+
+docker exec -it caddy curl -i \
+  -H "Connection: Upgrade" \
+  -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Key: SGVsbG9Xb3JsZDEyMzQ1Ng==" \
+  -H "Sec-WebSocket-Version: 13" \
+  http://rigcloud-ws:8765/ws
+
+docker exec -it caddy curl -i \
+  -H "Connection: Upgrade" \
+  -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  -H "Sec-WebSocket-Version: 13" \
+  http://rigcloud-ws:8765/dashboard/ws
+
+
+curl -i \
+  -H "Connection: Upgrade" \
+  -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  -H "Sec-WebSocket-Version: 13" \
+  http://127.0.0.1:8765/dashboard/ws
+  
+  

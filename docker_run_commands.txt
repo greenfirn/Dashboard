@@ -1,0 +1,104 @@
+docker network create ha-docker_default
+
+SUBDOMAINS can be comma-separated
+
+docker run -d \
+  --name duckdns \
+  --restart unless-stopped \
+  --network ha-docker_default \
+  -e PUID=1000 \
+  -e PGID=1000 \
+  -e TZ=America/Toronto \
+  -e SUBDOMAINS=****** \
+  -e TOKEN=YOUR_DUCKDNS_TOKEN_HERE \
+  -v /home/user/ha-docker/duckdns:/config \
+  linuxserver/duckdns
+
+docker run -d \
+  --name homeassistant \
+  --restart unless-stopped \
+  --network host \
+  -e TZ=America/Toronto \
+  -v /home/user/ha-docker/homeassistant:/config \
+  -v /etc/localtime:/etc/localtime:ro \
+  ghcr.io/home-assistant/home-assistant:stable
+
+docker run -d \
+  --name nodered \
+  --restart unless-stopped \
+  --network ha-docker_default \
+  -p 1880:1880 \
+  -e TZ=America/Toronto \
+  -v /home/user/ha-docker/nodered:/data \
+  nodered/node-red:latest
+
+mosquitto_passwd -c /mosquitto/config/passwords admin
+
+docker run -d \
+  --name mosquitto \
+  --restart unless-stopped \
+  --network ha-docker_default \
+  -p 1883:1883 \
+  -v /home/user/ha-docker/mosquitto/config:/mosquitto/config \
+  -v /home/user/ha-docker/mosquitto/data:/mosquitto/data \
+  -v /home/user/ha-docker/mosquitto/log:/mosquitto/log \
+  eclipse-mosquitto:2
+
+docker run -d \
+  --name zigbee2mqtt \
+  --restart unless-stopped \
+  --network ha-docker_default \
+  --device ************* \
+  -v /home/user/ha-docker/zigbee2mqtt:/app/data \
+  -v /run/udev:/run/udev:ro \
+  -e TZ=America/Toronto \
+  -p 8080:8080 \
+  koenkk/zigbee2mqtt
+
+docker run -d \
+  --name caddy \
+  --restart unless-stopped \
+  --network ha-docker_default \
+  -p 80:80 \
+  -p 443:443 \
+  -p 8081:8081 \
+  -v /home/user/ha-docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro \
+  -v /home/user/ha-docker/caddy/data:/data \
+  -v /home/user/ha-docker/caddy/config:/config \
+  caddy:2
+
+docker build -t rigcloud-ws /home/user/ha-docker/rigcloud-ws
+
+docker run -d \
+  --name rigcloud-ws \
+  --restart unless-stopped \
+  --network ha-docker_default \
+  -p 8765:8765 \
+  \
+  -v /etc/rigcloud/aws-certs:/certs:ro \
+  \
+  -e API_BIND=0.0.0.0 \
+  -e API_PORT=8765 \
+  -e BASE_PATH=/dashboard \
+  \
+  -e MQTT_MODE=local \
+  \
+  # ---------- LOCAL MQTT ----------
+  -e MQTT_HOST=mosquitto \
+  -e MQTT_PORT=1883 \
+  -e MQTT_USER=admin \
+  -e MQTT_PASS='**************' \
+  \
+  # ---------- AWS MQTT (optional) ----------
+  -e AWS_MQTT_HOST='************.iot.us-east-1.amazonaws.com' \
+  -e AWS_MQTT_PORT=8883 \
+  -e AWS_MQTT_CA='/certs/AmazonRootCA1.pem' \
+  -e AWS_MQTT_CERT='/certs/device.pem.crt' \
+  -e AWS_MQTT_KEY='/certs/private.pem.key' \
+  \
+  -e MQTT_TOPIC_FILTER='rigcloud/+/status' \
+  -e BROADCAST_INTERVAL=10 \
+  \
+  rigcloud-ws
+
+

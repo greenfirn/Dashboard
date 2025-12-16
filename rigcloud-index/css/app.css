@@ -1,0 +1,295 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #eee;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    margin-bottom: 12px;
+    color: #4fc3f7;
+    font-size: 18px;
+}
+/* ===============================
+   Action Bar
+================================ */
+
+#action-bar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+
+    height: 38px;
+    padding: 0 12px;
+
+    background: #141414;
+    border-bottom: 1px solid #2a2a2a;
+
+    font-size: 13px;
+}
+
+.action-left {
+    color: #cfd8dc;
+    opacity: 0.85;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.action-btn {
+    width: 28px;
+    height: 28px;
+
+    border-radius: 6px;
+    border: 1px solid #2e2e2e;
+    background: #1c1c1c;
+
+    color: #e0e0e0;
+    font-size: 14px;
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-btn:hover {
+    background: #252525;
+    border-color: #3a3a3a;
+}
+
+.action-btn:active {
+    background: #2d2d2d;
+}
+
+.action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.rig-row.selected {
+    outline: 1px solid #4fc3f7;
+    background: #202a33;
+}
+
+.rig-row.selected .rig-name {
+    color: #4fc3f7;
+}
+
+.reset-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: #b00020;
+    color: #fff;
+    font-size: 11px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.reset-btn:hover {
+    background: #ff1744;
+}
+
+.reset-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.rig-row.selected {
+    border-color: #4fc3f7;
+    background: #16212b;
+}
+
+.rig-name {
+    cursor: pointer;
+}
+
+.rig-row {
+    display: flex;
+    flex-direction: column;
+    background: #1b1b1b;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+
+.rig-header {
+    background: #1b1b1b;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #7A8FA6; /* #c0c0c0 #7A8FA6 */
+    pointer-events: none;
+}
+
+.rig-header .reset-btn {
+    pointer-events: auto;
+}
+
+/* Header row uses same grid template as rig-row */
+.rig-header-grid {
+    display: grid;
+    grid-template-columns:
+        120px  /* rig name */
+        90px   /* CPU temp */
+        60px   /* CPU % */
+        150px  /* LA */
+        100px  /* RAM */
+        60px   /* GPU temp */
+        60px   /* GPU % */
+        60px   /* Watts */
+        50px   /* Fan */
+        100px  /* VRAM */
+        70px   /* Core MHz */
+        70px   /* Mem MHz */
+        40px   /* CPU state */
+        40px   /* GPU state */
+        220px  /* Hashrate */
+        20px;  /* Docker count */
+    white-space: nowrap;
+    align-items: center;
+}
+
+.header-item {
+    padding-right: 4px;
+}
+
+.rig-main {
+    display: grid;
+    grid-template-columns:
+        120px   /* rig name */
+        90px    /* CPU temp */
+        60px    /* CPU util */
+        150px   /* LA */
+        100px   /* RAM */
+        60px    /* GPU temp */
+        60px    /* GPU util */
+        60px    /* power */
+        50px    /* fan */
+        100px   /* VRAM */
+        70px    /* core MHz */
+        70px    /* mem MHz */
+        40px    /* CPU service */
+        40px    /* GPU service */
+        220px   /* Hashrate */
+        20px;   /* docker count */
+    align-items: center;
+    cursor: pointer;
+    white-space: nowrap;
+    column-gap: 10px;
+}
+
+.rig-name {
+    font-weight: bold;
+    color: #8FB5C9; /* #c0c0c0 #81d4fa */
+    min-width: 160px;
+    margin-right: 16px;
+}
+
+.metric {
+    margin: 0;
+    text-align: right;
+    padding-right: 6px;
+    color: #E0E0E0;
+}
+
+.metric-left {
+    text-align: left;
+    padding-right: 6px;
+    color: #E0E0E0;
+}
+
+.title-left {
+    text-align: left;
+    display: flex;
+    align-items: center;
+    padding-right: 6px;
+    color: #E0E0E0;
+}
+
+.metric b {
+    color: #bbb;
+}
+
+.status-hot {
+    color: #ff5252;
+}
+
+.status-good {
+    color: #8bc34a;
+}
+
+.status-warm {
+    color: #ffcc00;
+}
+
+.service-ok {
+    color: #8bc34a;
+    font-weight: bold;
+}
+
+.service-bad {
+    color: #808080;
+    font-weight: bold;
+}
+
+/* Popout container now flex row: docker left, miners right */
+.docker-popover {
+    display: none;
+    background: #111;
+    border: 1px solid #333;
+    padding: 10px 12px;
+    margin-top: 4px;
+    border-radius: 6px;
+    font-size: 13px;
+    display: flex;
+    gap: 24px;
+    flex-direction: row;
+}
+
+.pop-left {
+    flex: 1;
+    min-width: 300px;
+}
+
+.pop-right {
+    flex: 0 0 260px;
+    border-left: 1px solid #333;
+    padding-left: 14px;
+}
+
+.docker-header {
+    font-weight: bold;
+    color: #81d4fa;
+    margin-bottom: 4px;
+}
+
+.miner-row {
+    padding: 2px 0;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #222;
+    white-space: nowrap;
+}
+
+.miner {
+    text-align: center;
+    padding-right: 6px;
+}

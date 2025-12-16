@@ -1,0 +1,29 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowConnect",
+      "Effect": "Allow",
+      "Action": "iot:Connect",
+      "Resource": "arn:aws:***********:client/RigCloudControl*"
+    },
+    {
+      "Sid": "AllowSendCommandsToRigs",
+      "Effect": "Allow",
+      "Action": "iot:Publish",
+      "Resource": "arn:aws:***********:topic/rigcloud/*/cmd"
+    },
+    {
+      "Sid": "AllowReceiveRigStatus",
+      "Effect": "Allow",
+      "Action": "iot:Receive",
+      "Resource": "arn:aws:***********:topic/rigcloud/*/status"
+    },
+    {
+      "Sid": "AllowSubscribeToStatusFilter",
+      "Effect": "Allow",
+      "Action": "iot:Subscribe",
+      "Resource": "arn:aws:***********:topicfilter/rigcloud/+/status"
+    }
+  ]
+}

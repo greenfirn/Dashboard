@@ -1,0 +1,28 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "iot:Connect",
+      "Resource": "arn:aws:***********:client/rigcloud-*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iot:Subscribe",
+      "Resource": "arn:aws:***********:topicfilter/rigcloud/*/cmd"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iot:Receive",
+      "Resource": "arn:aws:***********:topic/rigcloud/*/cmd"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iot:Publish",
+      "Resource": [
+        "arn:aws:***********:topic/rigcloud/*/status",
+        "arn:aws:***********:topic/rigcloud/*/telemetry"
+      ]
+    }
+  ]
+}

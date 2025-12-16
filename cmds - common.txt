@@ -1,0 +1,6 @@
+
+# watch logs
+docker logs -f rigcloud-ws
+
+# reload config inside container
+docker exec caddy caddy reload --config /etc/caddy/Caddyfile

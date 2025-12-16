@@ -1,0 +1,39 @@
+
+cd C:\Program Files\mosquitto\
+
+mosquitto_passwd -c pwfile admin
+
+net stop mosquitto
+sc delete mosquitto
+
+mkdir C:\mosquitto
+mkdir C:\mosquitto\data
+
+move "C:\Program Files\mosquitto\pwfile" C:\mosquitto\
+
+C:\Program Files\mosquitto\mosquitto.conf
+
+listener 1883
+allow_anonymous false
+
+password_file C:\mosquitto\pwfile
+
+persistence true
+persistence_location C:\mosquitto\data\
+
+log_dest file C:\mosquitto\mosquitto.log
+log_type all
+
+
+"C:\Program Files\mosquitto\mosquitto.exe" -c "C:\Program Files\mosquitto\mosquitto.conf" -v
+
+sc create mosquitto ^
+  binPath= "\"C:\Program Files\mosquitto\mosquitto.exe\" -c \"C:\Program Files\mosquitto\mosquitto.conf\"" ^
+  start= auto ^
+  DisplayName= "Mosquitto Broker"
+
+sc qc mosquitto
+
+net start mosquitto
+
+
