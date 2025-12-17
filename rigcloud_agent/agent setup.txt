@@ -5,18 +5,12 @@ sudo apt update
 sudo apt install -y python3 python3-pip jq ca-certificates curl
 sudo python3 -m pip install aiomqtt typing_extensions paho-mqtt --break-system-packages
 
-sudo systemctl daemon-reload
-sudo systemctl enable rigcloud-agent.service
-sudo systemctl start rigcloud-agent.service
-sudo journalctl -u rigcloud-agent.service -f
-
 #sudo pip install psutil --break-system-packages
 
 hiveos:
 sudo apt update
 sudo apt install -y python3-pip
 sudo pip3 install aiomqtt typing_extensions paho-mqtt
-
 
 sudo tee /etc/systemd/system/rigcloud-agent.service > /dev/null <<'EOF'
 [Unit]
@@ -57,3 +51,9 @@ sudo chmod 600 /etc/rigcloud/public.key
 
 # CA files should remain world-readable (644)
 sudo chmod 644 /etc/rigcloud/AmazonRootCA1.pem
+
+
+sudo systemctl daemon-reload
+sudo systemctl enable rigcloud-agent.service
+sudo systemctl start rigcloud-agent.service
+sudo journalctl -u rigcloud-agent.service -f
