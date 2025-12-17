@@ -27,5 +27,8 @@ data hard reset, select buttons, and send command work for now, bzminer and xmri
 most recent version in repos
 
 ![Sendcmd Screenshot](Screenshot-send-cmd.png)
+![file-create Screenshot](Screenshot-file-create.png)
+![active-test Screenshot](Screenshot-active-test.png)
+
 
 Some portions of this project were developed with assistance from ChatGPT.
