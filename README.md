@@ -14,4 +14,4 @@ cmds received by rigs get handled by rigcloud_cmd.sh
 
 only data hard reset and select buttons work for now
 
-![Dashboard Screenshot](screenshot.png)
+![Dashboard Screenshot](Screenshot.png)
