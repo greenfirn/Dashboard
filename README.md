@@ -4,17 +4,21 @@ CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, M
 
 ![Dashboard Screenshot](Screenshot.png)
 
-rigcloud_dashboard_server.py connects to MQTT Broker, local on windows, raspberry pi, or amazon aws
+MQTT Broker is what the rigs and dashboard backend talk too... can be run local on windows, raspberry pi, or amazon aws
 
-'MOSQUITTO START' - remove this section if not on windows, and if from entry point
+... requires little setup just acts as a go between
 
-rigcloud_agent.py runs on rigs to collect stats on demand, accept commands
+rigcloud_dashboard_server.py connects to MQTT Broker as dashboard backend
+
+'MOSQUITTO START' - remove this section from server.py if not on windows, and if from entry point
+
+rigcloud_agent.py runs on rigs to collect stats on demand, accept commands talks to MQTT Broker
 
 visual studio project files in repos to make development a little easier
 
-setup notes for mosquitto-bridge mode in repos to use visual studio while rigs are still pointed else were
+setup notes for mosquitto-bridge mode in repos to use visual studio while rigs are still pointed at pi/aws
 
-cmds received by rigs get handled by rigcloud_cmd.sh
+general cmds received by rigs get handled by rigcloud_cmd.sh
 
 only data hard reset and select buttons work for now, rig agent all setup to receive cmds
 
