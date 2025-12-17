@@ -3,7 +3,6 @@ html Dashboard for ubuntu server / hiveos rigs... click a rig to show more detai
 CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service active, Miner, Containers running
 
 ![Dashboard Screenshot](Screenshot.png)
-![Sendcmd Screenshot](Screenshot-send-cmd.png)
 
 rigs and dashboard backend talk to a MQTT Broker... can be run local on windows, raspberry pi, or amazon aws
 
@@ -24,5 +23,7 @@ setup notes for mosquitto-bridge mode in repos to use visual studio while rigs a
 general cmds received by rigs get handled by rigcloud_cmd.sh
 
 data hard reset, select buttons, and send command work for now, bzminer and xmrig hashrates, rig agent all setup to receive cmds
+
+![Sendcmd Screenshot](Screenshot-send-cmd.png)
 
 Some portions of this project were developed with assistance from ChatGPT.
