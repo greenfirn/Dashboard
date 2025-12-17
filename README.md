@@ -14,6 +14,8 @@ rigcloud_dashboard_server.py connects to MQTT Broker as dashboard backend
 
 rigcloud_agent.py runs on rigs to collect stats on demand, accept commands, talks to MQTT Broker
 
+raspberry pi setup - uses Docker, duckdns, caddy, mqtt, rigcloud_dashboard_server.py in a container
+
 visual studio project files in repos to make development a little easier
 
 setup notes for mosquitto-bridge mode in repos to use visual studio while rigs are still pointed at pi/aws
