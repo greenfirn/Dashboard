@@ -4,8 +4,6 @@ import asyncio
 import json
 import threading
 import time
-import subprocess
-import psutil
 
 from pathlib import Path
 from typing import Dict, Any, List
@@ -123,6 +121,8 @@ def log(msg: str) -> None:
 # ================================================================
 # MOSQUITTO START
 # ================================================================
+import psutil
+import subprocess
 
 def is_mosquitto_running():
     #log("Checking if Mosquitto process is running...")
