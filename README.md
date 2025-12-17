@@ -12,7 +12,7 @@ rigcloud_dashboard_server.py connects to MQTT Broker as dashboard backend
 
 'MOSQUITTO START' - remove this section from server.py if not on windows, and if from entry point
 
-rigcloud_agent.py runs on rigs to collect stats on demand, accept commands talks to MQTT Broker
+rigcloud_agent.py runs on rigs to collect stats on demand, accept commands, talks to MQTT Broker
 
 visual studio project files in repos to make development a little easier
 
