@@ -1,0 +1,11 @@
+sudo systemctl stop rigcloud-agent.service
+
+sudo mv -v rigcloud_agent.py /usr/local/bin/
+sudo mv -v rigcloud_telemetry.py /usr/local/bin/
+sudo chmod +x rigcloud_cmd.sh
+sudo sed -i 's/\r$//' /home/user/rigcloud_cmd.sh
+
+sudo systemctl start rigcloud-agent.service
+exit
+
+sudo journalctl -u rigcloud-agent.service -f

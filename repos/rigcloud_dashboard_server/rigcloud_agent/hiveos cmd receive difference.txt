@@ -1,0 +1,13 @@
+CMD="$1"
+[ -z "$CMD" ] && exit 1
+bash -c "$CMD" _
+
+
+
+
+subprocess.run(
+    ["stdbuf", "-oL", "-eL", CMD_SCRIPT, command],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True
+)

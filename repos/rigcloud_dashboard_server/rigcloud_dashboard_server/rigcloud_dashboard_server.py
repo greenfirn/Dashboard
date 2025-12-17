@@ -31,7 +31,7 @@ if MQTT_MODE == "local":
     MQTT_BROKER = os.getenv("MQTT_HOST", "127.0.0.1")
     MQTT_PORT   = int(os.getenv("MQTT_PORT", "1883"))
     MQTT_USER   = os.getenv("MQTT_USER", "admin")
-    MQTT_PASS   = os.getenv("MQTT_PASS", "YLdre4ICRaqecEPr@so4a16azefumo")
+    MQTT_PASS   = os.getenv("MQTT_PASS", "")
 
     MQTT_CERT = None
     MQTT_KEY  = None
@@ -42,7 +42,7 @@ elif MQTT_MODE == "pi":
     MQTT_BROKER = os.getenv("MQTT_HOST", "mosquitto")
     MQTT_PORT   = int(os.getenv("MQTT_PORT", "1883"))
     MQTT_USER   = os.getenv("MQTT_USER", "admin")
-    MQTT_PASS   = os.getenv("MQTT_PASS", "YLdre4ICRaqecEPr@so4a16azefumo")
+    MQTT_PASS   = os.getenv("MQTT_PASS", "")
 
     MQTT_CERT = None
     MQTT_KEY  = None
@@ -471,7 +471,9 @@ def on_message(client, userdata, msg):
         # TELEMETRY / STATUS
         # rigcloud/<rig>/status
         # =====================================================
-        rig_name = data.get("rig") or "unknown"
+        rig_name = data.get("rig")
+        if not rig_name:
+            return  # Ignore messages without a rig identity
 
         # ---- register rig identity ----
         with known_rigs_lock:
