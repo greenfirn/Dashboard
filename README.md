@@ -1,4 +1,4 @@
-Dashboard for ubuntu rigs...
+Dashboard for ubuntu rigs... click to show more details, Docker containers
 
 ![Dashboard Screenshot](Screenshot.png)
 
