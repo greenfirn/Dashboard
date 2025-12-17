@@ -112,6 +112,119 @@ h1 {
     border-color: #4fc3f7;
     background: #16212b;
 }
+/* ===============================
+   Command Modal
+================================ */
+
+.cmd-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+
+    background: rgba(0, 0, 0, 0.75);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cmd-modal.hidden {
+    display: none;
+}
+
+.cmd-dialog {
+    display: flex;
+    flex-direction: column;
+    width: 80vw;
+    height: 80vh;           /* overall modal size */
+    max-width: 1200px;
+}
+
+.cmd-header {
+    background: #111;              /* ← restore header bar */
+    border-bottom: 1px solid #333;
+
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    font-weight: 600;
+}
+
+
+.cmd-target {
+    font-size: 12px;
+    color: #aaa;
+}
+
+/* Command input (small) */
+#cmd-input {
+    height: 80px;
+    min-height: 80px;
+    max-height: 120px;
+
+    background: #000;          /* ← THIS FIXES THE WHITE */
+    color: #e0e0e0;
+    border: none;
+    border-bottom: 1px solid #333;
+
+    font-family: Consolas, monospace;
+    font-size: 13px;
+
+    padding: 10px;
+    outline: none;
+    resize: vertical;
+}
+
+
+.cmd-footer {
+    padding: 10px 14px;
+    border-top: 1px solid #333;
+
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.cmd-btn {
+    min-width: 90px;
+    height: 32px;
+
+    border-radius: 6px;
+    border: 1px solid #2e2e2e;
+    background: #1c1c1c;
+
+    color: #e0e0e0;
+    cursor: pointer;
+}
+
+.cmd-btn:hover {
+    background: #252525;
+}
+
+.cmd-btn.ok {
+    border-color: #4fc3f7;
+    color: #4fc3f7;
+}
+
+.cmd-btn.ok:hover {
+    background: #203040;
+}
+
+/* Command output (fills rest) */
+.cmd-output {
+    flex: 1;                /* ← takes remaining space */
+    margin: 0;
+    padding: 12px;
+    background: #000;
+    color: #e0e0e0;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    overflow-y: auto;
+    border-top: 1px solid #333;
+    white-space: pre-wrap;
+}
 
 .rig-name {
     cursor: pointer;

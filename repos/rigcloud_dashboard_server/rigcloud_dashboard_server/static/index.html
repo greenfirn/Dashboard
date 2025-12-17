@@ -9,23 +9,56 @@
 <body>
 <div id="action-bar">
     <div class="action-buttons">
-        <button class="action-btn" title="Start">
-            ▶
-        </button>
+        <button class="action-btn" title="Start">▶</button>
+        <button class="action-btn" title="Stop">■</button>
+        <button class="action-btn" title="Restart">↻</button>
+        <button class="action-btn" id="btn-toggle-select" title="Select / Unselect all">✕</button>
+    </div>
 
-        <button class="action-btn" title="Stop">
-            ■
-        </button>
+    <!-- FLEX SPACER -->
+    <div class="action-spacer"></div>
 
-        <button class="action-btn" title="Restart">
-            ↻
-        </button>
-
-        <button class="action-btn" id="btn-toggle-select" title="Select / Unselect all">
-            ✕
+    <!-- SEND COMMAND (far right) -->
+    <div class="action-right">
+        <button
+            class="action-btn cmd-btn"
+            id="btn-send-cmd"
+            title="Send command to selected rigs">
+            ⌘
         </button>
     </div>
 </div>
+
+<!-- Command Modal -->
+<div id="cmd-modal" class="cmd-modal hidden" onclick="closeCmdModal()">
+    <div class="cmd-dialog" onclick="event.stopPropagation()">
+        <div class="cmd-header">
+            <span>Send Command</span>
+            <span class="cmd-target">
+                (<span id="cmd-target-count">0</span> rigs)
+            </span>
+        </div>
+
+        <textarea
+            id="cmd-input"
+            spellcheck="false"
+            placeholder="# Enter command(s) to execute on selected rigs
+# Example:
+uptime
+df -h
+nvidia-smi
+"></textarea>
+
+        <!-- 🔽 COMMAND OUTPUT (THIS WAS MISSING) -->
+        <pre id="cmd-output" class="cmd-output"></pre>
+
+        <div class="cmd-footer">
+            <button class="cmd-btn cancel" onclick="closeCmdModal()">Cancel</button>
+            <button class="cmd-btn ok" onclick="submitCmd()">Send</button>
+        </div>
+    </div>
+</div>
+
 <div class="rig-header">
     <div class="rig-main rig-header-grid">
         <div class="header-item title-left">

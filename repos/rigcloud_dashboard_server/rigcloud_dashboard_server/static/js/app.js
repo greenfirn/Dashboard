@@ -5,9 +5,13 @@ let resetInProgress = false;
 let selectedRigs = new Set();
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("btn-toggle-select")?.addEventListener("click", () => {
-        toggleSelectAll();
-    });
+    document
+        .getElementById("btn-toggle-select")
+        ?.addEventListener("click", toggleSelectAll);
+
+    document
+        .getElementById("btn-send-cmd")
+        ?.addEventListener("click", openCmdModal);
 });
 
 /* -------------------- Uptime Formatter -------------------- */
@@ -37,6 +41,26 @@ function initWebSocket() {
         try {
             const msg = JSON.parse(event.data);
 
+            /* =====================================================
+               COMMAND RESPONSE
+               ===================================================== */
+            if (msg.cmd_response) {
+                const out = document.getElementById("cmd-output");
+                if (!out) return;
+
+                const r = msg.cmd_response;
+
+                out.textContent += `\n[${r.rig}] returncode=${r.returncode}\n`;
+                if (r.stdout) out.textContent += r.stdout + "\n";
+                if (r.stderr) out.textContent += r.stderr + "\n";
+
+                out.scrollTop = out.scrollHeight;
+                return;
+            }
+
+            /* =====================================================
+               FULL RIG SNAPSHOT
+               ===================================================== */
             if (msg.rigs) {
                 rigsState = msg.rigs;
                 lastUpdateTs = Date.now() / 1000;
@@ -44,6 +68,9 @@ function initWebSocket() {
                 return;
             }
 
+            /* =====================================================
+               SINGLE RIG UPDATE
+               ===================================================== */
             if (msg.rig && msg.data) {
                 rigsState[msg.rig] = {
                     timestamp: msg.timestamp || Math.floor(Date.now() / 1000),
@@ -54,6 +81,9 @@ function initWebSocket() {
                 return;
             }
 
+            /* =====================================================
+               LEGACY PAYLOAD
+               ===================================================== */
             if (msg.payload && msg.payload.rig) {
                 const r = msg.payload.rig;
                 rigsState[r] = {
@@ -64,6 +94,7 @@ function initWebSocket() {
                 render();
                 return;
             }
+
         } catch (e) {
             console.error("WS parse error", e);
         }
@@ -71,6 +102,7 @@ function initWebSocket() {
 
     ws.onclose = () => setTimeout(initWebSocket, 5000);
 }
+
 
 /* -------------------- HTTP Fallback -------------------- */
 async function fetchRigsOnce() {
@@ -82,7 +114,6 @@ async function fetchRigsOnce() {
         render();
     } catch {}
 }
-
 
 function toggleSelectAll() {
     const rigNames = Object.keys(rigsState);
@@ -114,6 +145,47 @@ function updateSelectButton() {
         selectedRigs.size === total && total > 0 ? "☑" : "☐";
 }
 
+function openCmdModal() {
+    if (selectedRigs.size === 0) {
+        alert("No rigs selected");
+        return;
+    }
+
+    document.getElementById("cmd-target-count").textContent =
+        selectedRigs.size;
+
+    const modal = document.getElementById("cmd-modal");
+    const input = document.getElementById("cmd-input");
+
+    const out = document.getElementById("cmd-output");
+    if (out) out.textContent = "";
+
+    modal.classList.remove("hidden");
+    input.value = "";
+    input.focus();
+}
+
+
+function closeCmdModal() {
+    document.getElementById("cmd-modal").classList.add("hidden");
+}
+
+function submitCmd() {
+    const cmd = document.getElementById("cmd-input").value.trim();
+    if (!cmd) return;
+
+    fetch("/dashboard/command", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            rigs: Array.from(selectedRigs),
+            command: cmd
+        })
+    }).catch(err => {
+        console.error("Command send failed", err);
+        alert("Failed to send command");
+    });
+}
 
 /* -------------------- Render -------------------- */
 function render() {

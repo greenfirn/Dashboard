@@ -23,15 +23,15 @@ router = APIRouter()
 # ================================================================
 # MQTT CONFIG ... https://mosquitto.org/download/
 # ================================================================
-# MQTT_MODE "local" or "pi", "aws"
+#MQTT_MODE = "local"  # "local" or "aws"
 
-MQTT_MODE = os.getenv("MQTT_MODE", "pi")
+MQTT_MODE = os.getenv("MQTT_MODE", "local")
 
 if MQTT_MODE == "local":
     MQTT_BROKER = os.getenv("MQTT_HOST", "127.0.0.1")
     MQTT_PORT   = int(os.getenv("MQTT_PORT", "1883"))
     MQTT_USER   = os.getenv("MQTT_USER", "admin")
-    MQTT_PASS   = os.getenv("MQTT_PASS", "")
+    MQTT_PASS   = os.getenv("MQTT_PASS", "YLdre4ICRaqecEPr@so4a16azefumo")
 
     MQTT_CERT = None
     MQTT_KEY  = None
@@ -42,7 +42,7 @@ elif MQTT_MODE == "pi":
     MQTT_BROKER = os.getenv("MQTT_HOST", "mosquitto")
     MQTT_PORT   = int(os.getenv("MQTT_PORT", "1883"))
     MQTT_USER   = os.getenv("MQTT_USER", "admin")
-    MQTT_PASS   = os.getenv("MQTT_PASS", "")
+    MQTT_PASS   = os.getenv("MQTT_PASS", "YLdre4ICRaqecEPr@so4a16azefumo")
 
     MQTT_CERT = None
     MQTT_KEY  = None
@@ -74,7 +74,7 @@ STATIC_DIR = BASE_DIR / "static"
 API_BIND = os.getenv("API_BIND", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "8765"))
 
-MQTT_TOPIC_FILTER = os.getenv("MQTT_TOPIC_FILTER", "rigcloud/+/status")
+MQTT_TOPIC_FILTER = os.getenv("MQTT_TOPIC_FILTER", "rigcloud/+/+")
 
 BROADCAST_INTERVAL = float(os.getenv("BROADCAST_INTERVAL", "10"))
 
@@ -203,7 +203,13 @@ async def broadcast_loop():
 
             # ---- send refresh if due ----
             if now - last_refresh_ts >= BROADCAST_INTERVAL:
-                mqtt_publish(CMD_ALL_TOPIC, {"cmd": "refresh"})
+                mqtt_publish(
+                    CMD_ALL_TOPIC,
+                        {
+                            "id": f"refresh-{int(time.time())}",
+                            "command": "refresh"
+                        }
+                )
                 last_refresh_ts = now
                 log("[MQTT] Refresh requested")
 
@@ -274,7 +280,13 @@ def get_rigs():
 
 @router.post("/refresh")
 def refresh_all():
-    mqtt_publish(CMD_ALL_TOPIC, {"cmd": "refresh"})
+    mqtt_publish(
+        CMD_ALL_TOPIC,
+        {
+            "id": f"refresh-{int(time.time())}",
+            "command": "refresh"
+        }
+    )
     return {"status": "refresh sent"}
 
 @router.post("/reset")
@@ -288,9 +300,42 @@ def reset_known_rigs():
     with rigs_lock:
         rigs.clear()
 
-    mqtt_publish(CMD_ALL_TOPIC, {"cmd": "refresh"})
+    mqtt_publish(
+        CMD_ALL_TOPIC,
+        {
+            "id": f"refresh-{int(time.time())}",
+            "command": "refresh"
+        }
+    )
+
     log("[Reset] Cleared known rigs and telemetry (user request)")
     return {"status": "reset complete"}
+
+@router.post("/command")
+async def send_command(payload: dict):
+    rigs = payload.get("rigs", [])
+    command = payload.get("command")
+
+    if not command or not rigs:
+        return {"error": "missing rigs or command"}
+
+    cmd_id = f"cmd-{int(time.time())}"
+
+    msg = {
+        "id": cmd_id,
+        "command": command
+    }
+
+    for rig in rigs:
+        topic = f"rigcloud/{rig}/cmd"
+        mqtt_publish(topic, msg)
+        log(f"[CMD] Sent command to {rig}: {command!r}")
+
+    return {
+        "status": "sent",
+        "id": cmd_id,
+        "rigs": rigs
+    }
 
 # ================================================================
 # WEBSOCKET ENDPOINT
@@ -310,7 +355,14 @@ async def websocket_endpoint(websocket: WebSocket):
     if first_client:
         broadcast_stop.clear()
         broadcast_task = asyncio.create_task(broadcast_loop())
-        mqtt_publish(CMD_ALL_TOPIC, {"cmd": "refresh"})
+        mqtt_publish(
+            CMD_ALL_TOPIC,
+            {
+                "id": f"refresh-{int(time.time())}",
+                "command": "refresh"
+            }
+        )
+
         log("[MQTT] Refresh requested (first WS client)")
 
     with rigs_lock:
@@ -396,9 +448,30 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     try:
+        topic = msg.topic
         data = json.loads(msg.payload.decode("utf-8"))
-        rig_name = data.get("rig") or "unknown"
         now = time.time()
+
+        # =====================================================
+        # COMMAND RESPONSE
+        # rigcloud/<rig>/cmd_response
+        # =====================================================
+        if topic.endswith("/cmd_response"):
+            log(f"[CMD_RESPONSE] {data.get('rig')} id={data.get('id')}")
+
+            if main_loop:
+                main_loop.call_soon_threadsafe(
+                    lambda: asyncio.create_task(
+                        push_cmd_response_to_ws(data)
+                    )
+                )
+            return
+
+        # =====================================================
+        # TELEMETRY / STATUS
+        # rigcloud/<rig>/status
+        # =====================================================
+        rig_name = data.get("rig") or "unknown"
 
         # ---- register rig identity ----
         with known_rigs_lock:
@@ -413,11 +486,10 @@ def on_message(client, userdata, msg):
                 "data": data,
             }
 
-        # ---- push to WS immediately (debounced, thread-safe) ----
+        # ---- push snapshot to WS (debounced) ----
         global last_ws_push
         if connected_clients and now - last_ws_push >= WS_PUSH_MIN_INTERVAL:
             last_ws_push = now
-
             if main_loop:
                 main_loop.call_soon_threadsafe(
                     lambda: asyncio.create_task(push_snapshot_to_ws())
@@ -426,6 +498,22 @@ def on_message(client, userdata, msg):
     except Exception as e:
         log(f"[MQTT] Error processing message: {e}")
 
+async def push_cmd_response_to_ws(resp: dict):
+    async with clients_lock:
+        clients = list(connected_clients)
+
+    if not clients:
+        return
+
+    message = {
+        "cmd_response": resp
+    }
+
+    for ws in clients:
+        try:
+            await ws.send_json(message)
+        except:
+            pass
 
 def mqtt_publish(topic: str, payload: dict):
     try:

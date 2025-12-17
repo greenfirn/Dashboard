@@ -1,0 +1,59 @@
+
+sudo systemctl stop rigcloud-agent.service
+
+sudo apt update
+sudo apt install -y python3 python3-pip jq ca-certificates curl
+sudo python3 -m pip install aiomqtt typing_extensions paho-mqtt --break-system-packages
+
+#sudo pip install psutil --break-system-packages
+
+hiveos:
+sudo apt update
+sudo apt install -y python3-pip
+sudo pip3 install aiomqtt typing_extensions paho-mqtt
+
+sudo tee /etc/systemd/system/rigcloud-agent.service > /dev/null <<'EOF'
+[Unit]
+Description=RigCloud MQTT Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/bin/rigcloud_agent.py
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo mkdir -p /etc/rigcloud
+
+sudo chmod 700 /etc/rigcloud
+
+# Set correct ownership for ALL files
+
+AWS_MQTT_CERT=/etc/rigcloud/device.pem.crt
+AWS_MQTT_KEY=/etc/rigcloud/private.pem.key
+AWS_MQTT_CA=/etc/rigcloud/AmazonRootCA1.pem
+
+sudo chown root:root /etc/rigcloud/device.pem.crt
+sudo chown root:root /etc/rigcloud/private.pem.key
+sudo chown root:root /etc/rigcloud/public.key
+
+sudo chown root:root /etc/rigcloud/AmazonRootCA1.pem
+
+sudo chmod 600 /etc/rigcloud/device.pem.crt
+sudo chmod 600 /etc/rigcloud/private.pem.key
+sudo chmod 600 /etc/rigcloud/public.key
+
+# CA files should remain world-readable (644)
+sudo chmod 644 /etc/rigcloud/AmazonRootCA1.pem
+
+
+sudo systemctl daemon-reload
+sudo systemctl enable rigcloud-agent.service
+sudo systemctl start rigcloud-agent.service
+sudo journalctl -u rigcloud-agent.service -f
