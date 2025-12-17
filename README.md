@@ -24,6 +24,8 @@ general cmds received by rigs get handled by rigcloud_cmd.sh
 
 data hard reset, select buttons, and send command work for now, bzminer and xmrig hashrates
 
+most recent version in repos
+
 ![Sendcmd Screenshot](Screenshot-send-cmd.png)
 
 Some portions of this project were developed with assistance from ChatGPT.
