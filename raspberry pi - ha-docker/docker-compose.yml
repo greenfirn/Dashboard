@@ -77,7 +77,7 @@ services:
       AWS_MQTT_CA: "/certs/AmazonRootCA1.pem"
       AWS_MQTT_CERT: "/certs/device.pem.crt"
       AWS_MQTT_KEY: "/certs/private.pem.key"
-      MQTT_TOPIC_FILTER: "rigcloud/+/status"
+      MQTT_TOPIC_FILTER: "rigcloud/+/+"
       BROADCAST_INTERVAL: "10"
     ports:
       - "8765:8765"
