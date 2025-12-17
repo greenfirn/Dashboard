@@ -24,4 +24,4 @@ general cmds received by rigs get handled by rigcloud_cmd.sh
 
 only data hard reset and select buttons work for now, bzminer and xmrig hashrates, rig agent all setup to receive cmds
 
-
+Some portions of this project were developed with assistance from ChatGPT.
