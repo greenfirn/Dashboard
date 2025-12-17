@@ -1,5 +1,7 @@
 Dashboard for ubuntu rigs... click to show more details, number of running containers on the far right
 
+CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service active, Miner, Containers
+
 ![Dashboard Screenshot](Screenshot.png)
 
 rigcloud_dashboard_server.py connects to MQTT Broker, local on windows, raspberry pi, or amazon aws
