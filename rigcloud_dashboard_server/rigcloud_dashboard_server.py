@@ -19,11 +19,11 @@ from contextlib import asynccontextmanager
 router = APIRouter()
 
 # ================================================================
-# MQTT CONFIG ... https://mosquitto.org/download/
+# MQTT CONFIG ... https://mosquitto.org/download/ x64
 # ================================================================
 # MQTT_MODE "local" or "pi", "aws"
 
-MQTT_MODE = os.getenv("MQTT_MODE", "pi")
+MQTT_MODE = os.getenv("MQTT_MODE", "local")
 
 if MQTT_MODE == "local":
     MQTT_BROKER = os.getenv("MQTT_HOST", "127.0.0.1")
