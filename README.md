@@ -1,6 +1,6 @@
-Dashboard for ubuntu rigs... click to show more details, number of running containers on the far right
+Dashboard for ubuntu rigs... click a rig to show more details
 
-CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service active, Miner, Containers
+CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service active, Miner, Containers running
 
 ![Dashboard Screenshot](Screenshot.png)
 
