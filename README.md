@@ -4,7 +4,7 @@ CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, M
 
 ![Dashboard Screenshot](Screenshot.png)
 
-MQTT Broker is what the rigs and dashboard backend talk too... can be run local on windows, raspberry pi, or amazon aws
+rigs and dashboard backend talk too a MQTT Broker... can be run local on windows, raspberry pi, or amazon aws
 
 ... requires little setup just acts as a go between
 
