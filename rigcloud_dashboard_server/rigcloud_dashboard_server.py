@@ -118,9 +118,9 @@ def log(msg: str) -> None:
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] [RigCloud] {msg}", flush=True)
 
-# ================================================================
-# MOSQUITTO START - remove this section if not on windows
-# ================================================================
+# =====================================================================================================
+# MOSQUITTO START - remove if not on windows, entrypoint... if MQTT_MODE == "local": start_mosquitto()
+# =====================================================================================================
 import psutil
 import subprocess
 
