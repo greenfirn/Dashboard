@@ -1,5 +1,7 @@
 Dashboard for ubuntu rigs...
 
+![Dashboard Screenshot](Screenshot.png)
+
 rigcloud_dashboard_server.py connects to MQTT Broker, local on windows, raspberry pi, or amazon aws
 
 'MOSQUITTO START' - remove this section if not on windows, and if from entry point
@@ -14,4 +16,4 @@ cmds received by rigs get handled by rigcloud_cmd.sh
 
 only data hard reset and select buttons work for now
 
-![Dashboard Screenshot](Screenshot.png)
+
