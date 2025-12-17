@@ -4,3 +4,11 @@ docker logs -f rigcloud-ws
 
 # reload config inside container
 docker exec caddy caddy reload --config /etc/caddy/Caddyfile
+
+docker compose build --no-cache rigcloud-ws
+
+docker stop rigcloud-ws
+docker rm rigcloud-ws
+docker compose build rigcloud-ws
+docker compose up -d rigcloud-ws
+docker logs -f rigcloud-ws
