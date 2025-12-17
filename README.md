@@ -1,4 +1,4 @@
-html Dashboard for ubuntu server/hiveos rigs... click a rig to show more details
+html Dashboard for ubuntu server / hiveos rigs... click a rig to show more details
 
 CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service active, Miner, Containers running
 
