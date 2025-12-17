@@ -7,3 +7,5 @@ python agent runs on rigs to collect stats on demand, accept commands
 added visual studio project files in repos to make development a little easier
 
 added setup notes for mosquitto-bridge mode in repos to use visual studio while rigs are still pointed at pi mqtt
+
+cmds received by rigs go to rigcloud_cmd.sh
