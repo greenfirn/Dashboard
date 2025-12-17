@@ -23,4 +23,4 @@ ARGS 0 "-w %WORKER_NAME% -p x --lock-cclock 2190 --cclock 300 --lock-mclock X --
 EOF
 sleep 2
 systemctl start docker_events_gpu
-sudo journalctl -u docker_events_gpu -n 10 -f
+sudo journalctl -u docker_events_gpu -n 20 -f
