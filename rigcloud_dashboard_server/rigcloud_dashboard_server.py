@@ -119,7 +119,7 @@ def log(msg: str) -> None:
     print(f"[{ts}] [RigCloud] {msg}", flush=True)
 
 # ================================================================
-# MOSQUITTO START
+# MOSQUITTO START - *remove this section if not using on windows
 # ================================================================
 import psutil
 import subprocess
