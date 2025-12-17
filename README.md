@@ -22,6 +22,6 @@ setup notes for mosquitto-bridge mode in repos to use visual studio while rigs a
 
 general cmds received by rigs get handled by rigcloud_cmd.sh
 
-only data hard reset and select buttons work for now, rig agent all setup to receive cmds
+only data hard reset and select buttons work for now, bzminer and xmrig hashrates, rig agent all setup to receive cmds
 
 
