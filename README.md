@@ -1,6 +1,6 @@
 Dashboard for ubuntu rigs...
 
-uses MQTT Broker, local on windows, raspberry pi, or amazon aws
+rigcloud_dashboard_server.py connects to MQTT Broker, local on windows, raspberry pi, or amazon aws
 
 python agent runs on rigs to collect stats on demand, accept commands
 
