@@ -4,7 +4,7 @@ CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, M
 
 ![Dashboard Screenshot](Screenshot.png)
 
-most recent version in repos
+** most recent file versions in repos **
 
 windows setup:
 install python on whatever pc you want to use as website backend
@@ -14,6 +14,7 @@ modify the mqtt conf file to use user pass login and remote connections, set pas
 set mode to local in rigcloud_dashboard_server.py will try and run mqtt on start hidden
 
 on mining/AI rigs:
+agent setup.txt has details about prerequisites
 write rigcloud_agent.py, rigcloud_telemetry.py, rigcloud_cmd.sh, 
 and rigcloud-agent.conf with your login for mqtt
 create service with rigcloud_agent-service.sh
