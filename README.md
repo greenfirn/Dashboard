@@ -18,18 +18,18 @@ html Dashboard for ubuntu server rigs...
 - see api bind settings.txt
 
 windows setup:
-install python on whatever pc you want to use as website backend
-load rigcloud_dashboard_server.py add any modules it needs, can use visual studio community
-install x64 version of mqtt broker from https://mosquitto.org/download/
-modify the mqtt conf file to use user pass login and remote connections, set password etc
-set mode to local in rigcloud_dashboard_server.py will try and run mqtt on start hidden
+- install python on whatever pc you want to use as website backend
+- load rigcloud_dashboard_server.py add any modules it needs, can use visual studio community
+- install x64 version of mqtt broker from https://mosquitto.org/download/
+- modify the mqtt conf file to use user pass login and remote connections, set password etc
+- set mode to local in rigcloud_dashboard_server.py will try and run mqtt on start hidden
 
 on mining/AI rigs:
-agent setup.txt has details about prerequisites
-write rigcloud_agent.py, rigcloud_telemetry.py, rigcloud_cmd.sh, 
-and rigcloud-agent.conf with your login for mqtt
-create service with rigcloud_agent-service.sh
-should see mqtt connected in logs
+- agent setup.txt has details about prerequisites
+- write rigcloud_agent.py, rigcloud_telemetry.py, rigcloud_cmd.sh, 
+- and rigcloud-agent.conf with your login for mqtt
+- create service with rigcloud_agent-service.sh
+- should see mqtt connected in logs
 
 - multiple commands
 
