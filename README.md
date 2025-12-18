@@ -31,8 +31,4 @@ on mining/AI rigs:
 - create service with rigcloud_agent-service.sh
 - should see mqtt connected in logs
 
-- multiple commands
-
-![file-create Screenshot](Screenshot-file-create.png)
-
 Some portions of this project were developed with assistance from ChatGPT.
