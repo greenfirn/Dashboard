@@ -13,6 +13,8 @@ html Dashboard for ubuntu server rigs...
 ** most recent files in repos **
 - xmrig,bzminer,rigel hashrates
 - srbminer configured, not confirmed working
+- api settings in cmd line for it to work
+- bzminer works by default without any api settings
 
 windows setup:
 install python on whatever pc you want to use as website backend
