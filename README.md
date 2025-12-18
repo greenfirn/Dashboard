@@ -14,6 +14,7 @@ modify the mqtt conf file to use user pass login and remote connections, set pas
 set mode to local in rigcloud_dashboard_server.py will try and run mqtt on start hidden
 
 on mining/AI rigs:
+agent setup.txt has details about prerequisites
 write rigcloud_agent.py, rigcloud_telemetry.py, rigcloud_cmd.sh, 
 and rigcloud-agent.conf with your login for mqtt
 create service with rigcloud_agent-service.sh
