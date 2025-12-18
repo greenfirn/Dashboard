@@ -21,7 +21,7 @@ windows setup:
 - install python on whatever pc you want to use as website backend
 - load rigcloud_dashboard_server.py add any modules it needs, can use visual studio community
 - install x64 version of mqtt broker from https://mosquitto.org/download/
-- modify the mqtt conf file to use user pass login and remote connections, set password etc
+- modify the mqtt conf file see mosquitto.conf
 - set mode to local in rigcloud_dashboard_server.py will try and run mqtt on start hidden
 
 on mining/AI rigs:
