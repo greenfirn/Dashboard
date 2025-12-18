@@ -26,14 +26,16 @@ windows setup:
 - create a login 'C:\Program Files\mosquitto\mosquitto_passwd -c C:\mosquitto\ admin'
 - set mode to local near top of rigcloud_dashboard_server.py will run mqtt on start hidden
 
-aws optional advanced setup:
-- requires unique certificates on website backend pc and all the mining/AI rigs
-
 on mining/AI rigs:
 - agent setup.txt has details about prerequisites
 - write rigcloud_agent.py, rigcloud_telemetry.py, rigcloud_cmd.sh, 
 - and rigcloud-agent.conf with your login for mqtt
 - create service with rigcloud_agent-service.sh
 - should see mqtt connected in logs
+
+aws advanced setup:
+- requires unique certificates on website backend pc and all the mining/AI rigs
+- duckdns or similar for connecting to your public ip
+- caddy handles certificates, routing
 
 Some portions of this project were developed with assistance from ChatGPT.
