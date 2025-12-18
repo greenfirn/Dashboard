@@ -7,28 +7,55 @@
 <link rel="stylesheet" href="/static/css/app.css">
 </head>
 <body>
+<!-- ================= ACTION BAR ================= -->
 <div id="action-bar">
-    <div class="action-buttons">
-        <button class="action-btn" title="Start">▶</button>
-        <button class="action-btn" title="Stop">■</button>
-        <button class="action-btn" title="Restart">↻</button>
-        <button class="action-btn" id="btn-toggle-select" title="Select / Unselect all">✕</button>
-    </div>
 
-    <!-- FLEX SPACER -->
-    <div class="action-spacer"></div>
-
-    <!-- SEND COMMAND (far right) -->
-    <div class="action-right">
+    <!-- SEND COMMAND + SELECT (FAR LEFT) -->
+    <div class="action-left">
         <button
             class="action-btn cmd-btn"
             id="btn-send-cmd"
             title="Send command to selected rigs">
             ⌘
         </button>
-    </div>
-</div>
 
+        <button
+            class="action-btn"
+            id="btn-toggle-select"
+            title="Select / Unselect all">
+            ✕
+        </button>
+    </div>
+
+    <!-- MODE SELECT -->
+    <div class="action-modes">
+        <button class="action-tab active" data-mode="cpu" onclick="setActionMode('cpu')">CPU</button>
+        <button class="action-tab" data-mode="gpu" onclick="setActionMode('gpu')">GPU</button>
+        <button class="action-tab" data-mode="common" onclick="setActionMode('common')">BOTH</button>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="action-buttons">
+        <button class="action-btn" title="Start" onclick="actionStart()">▶</button>
+        <button class="action-btn" title="Stop" onclick="actionStop()">■</button>
+        <button class="action-btn" title="Restart" onclick="actionRestart()">↻</button>
+    </div>
+
+    <!-- FLEX SPACER -->
+    <div class="action-spacer"></div>
+
+    <!-- ACTION STATUS OUTPUT -->
+    <div class="action-status">
+        <textarea
+            id="action-output"
+            class="action-output collapsed"
+            readonly
+            placeholder="Action output..."
+            rows="1"
+        ></textarea>
+    </div>
+
+</div>
 <!-- Command Modal -->
 <div id="cmd-modal" class="cmd-modal hidden" onclick="closeCmdModal()">
     <div class="cmd-dialog" onclick="event.stopPropagation()">

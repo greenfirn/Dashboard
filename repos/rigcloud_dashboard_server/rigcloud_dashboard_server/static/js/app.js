@@ -3,16 +3,58 @@ let popoverState = {};
 let lastUpdateTs = 0;
 let resetInProgress = false;
 let selectedRigs = new Set();
+let currentActionMode = localStorage.getItem("actionMode") || "common";
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Toggle select all
     document
         .getElementById("btn-toggle-select")
         ?.addEventListener("click", toggleSelectAll);
 
+    // Open command modal
     document
         .getElementById("btn-send-cmd")
         ?.addEventListener("click", openCmdModal);
+
+    // Expand / collapse action status box
+    const actionBox = document.getElementById("action-output");
+    if (actionBox) {
+        actionBox.addEventListener("focus", () => {
+            actionBox.classList.remove("collapsed");
+            actionBox.classList.add("expanded");
+        });
+
+        actionBox.addEventListener("blur", () => {
+            actionBox.classList.remove("expanded");
+            actionBox.classList.add("collapsed");
+        });
+    }
+
+	// 👇 THIS is what makes GPU stick
+    setActionMode(currentActionMode);
 });
+
+function fmtRateHs(totalHs, label) {
+    if (!totalHs || totalHs <= 0) {
+        return null;
+    }
+
+    if (totalHs >= 1e6) {
+        return `${(totalHs / 1e6).toFixed(2)} MH/s ${label}`;
+    }
+    if (totalHs >= 1e3) {
+        return `${(totalHs / 1e3).toFixed(2)} kH/s ${label}`;
+    }
+    return `${totalHs.toFixed(0)} H/s ${label}`;
+}
+
+
+function fmtXmrig(hs) {
+    return hs > 0
+        ? `${(hs / 1e3).toFixed(1)} kH/s`
+        : null;
+}
+
 
 /* -------------------- Uptime Formatter -------------------- */
 function fmtUptime(sec) {
@@ -103,7 +145,6 @@ function initWebSocket() {
     ws.onclose = () => setTimeout(initWebSocket, 5000);
 }
 
-
 /* -------------------- HTTP Fallback -------------------- */
 async function fetchRigsOnce() {
     try {
@@ -135,57 +176,7 @@ function toggleSelectAll() {
     render();
 }
 
-function updateSelectButton() {
-    const btn = document.getElementById("btn-toggle-select");
-    if (!btn) return;
-
-    const total = Object.keys(rigsState).length;
-
-    btn.textContent =
-        selectedRigs.size === total && total > 0 ? "☑" : "☐";
-}
-
-function openCmdModal() {
-    if (selectedRigs.size === 0) {
-        alert("No rigs selected");
-        return;
-    }
-
-    document.getElementById("cmd-target-count").textContent =
-        selectedRigs.size;
-
-    const modal = document.getElementById("cmd-modal");
-    const input = document.getElementById("cmd-input");
-
-    const out = document.getElementById("cmd-output");
-    if (out) out.textContent = "";
-
-    modal.classList.remove("hidden");
-    input.value = "";
-    input.focus();
-}
-
-
-function closeCmdModal() {
-    document.getElementById("cmd-modal").classList.add("hidden");
-}
-
-function submitCmd() {
-    const cmd = document.getElementById("cmd-input").value.trim();
-    if (!cmd) return;
-
-    fetch("/dashboard/command", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            rigs: Array.from(selectedRigs),
-            command: cmd
-        })
-    }).catch(err => {
-        console.error("Command send failed", err);
-        alert("Failed to send command");
-    });
-}
+console.log("rigsState before render:", rigsState);
 
 /* -------------------- Render -------------------- */
 function render() {
@@ -194,12 +185,14 @@ function render() {
     const container = document.getElementById("rig-container");
     container.innerHTML = "";
 
-    const rigNames = Object.keys(rigsState).sort();
+    const rigNames = Object.keys(rigsState)
+    .filter(name => name !== "rigs")
+    .sort();
 
     rigNames.forEach(rigName => {
         const entry = rigsState[rigName];
         const d = entry.data ?? {};
-        const safeId = rigName.replace(/[^a-zA-Z0-9_-]/g, "_");
+		const safeId = rigName.replace(/[^a-zA-Z0-9_-]/g, "_");
         const open = popoverState[safeId] === true;
 
         /* ---------------- CPU ---------------- */
@@ -272,82 +265,93 @@ function render() {
         /* ---------------- Miners ---------------- */
         const rg = d.miner_rigel;
         const srb = d.miner_srbminer;
-		const bz = d.miner_bzminer;
+        const bz = d.miner_bzminer;
         const xm = d.miner_xmrig;
 
         let minerRight = "";
-        if (bz || xm || rg || srb) minerRight += `<div class="docker-header">Miners</div>`;
+        if (bz || xm || rg || srb) {
+            minerRight += `<div class="docker-header">Miners</div>`;
+        }
 
         if (bz) {
+            const rate =
+                fmtRateHs(
+                    bz.total_hs ??
+                        (bz.total_mhs ? bz.total_mhs * 1e6 : null),
+                    ""
+                ) ?? "--";
+
             minerRight += `
                 <div class="miner-row">
-                    <b>BzMiner</b> — ${bz.total_mhs?.toFixed(2) ?? "--"} MH/s
-                    <span style="float:right;color:#aaa">${fmtUptime(bz.uptime_s)}</span>
+                    <b>BzMiner</b> — ${rate}
+                    <span style="float:right;color:#aaa">
+                        ${fmtUptime(bz.uptime_s)}
+                    </span>
                 </div>`;
         }
 
         if (xm) {
-            const rate =
-                xm.total_khs ? `${xm.total_khs.toFixed(2)} kH/s` :
-                xm.total_hs ? `${xm.total_hs} H/s` : "--";
+            const rate = fmtXmrig(xm.total_hs) ?? "--";
 
             minerRight += `
                 <div class="miner-row">
                     <b>XMRig</b> — ${rate}
-                    <span style="float:right;color:#aaa">${fmtUptime(xm.uptime_s)}</span>
+                    <span style="float:right;color:#aaa">
+                        ${fmtUptime(xm.uptime_s)}
+                    </span>
                 </div>`;
         }
-		if (rg) {
-            const rate =
-            rg.total_hs >= 1e6 ? `${(rg.total_hs / 1e6).toFixed(2)} MH/s` :
-            rg.total_hs >= 1e3 ? `${(rg.total_hs / 1e3).toFixed(2)} kH/s` :
-            rg.total_hs ? `${rg.total_hs.toFixed(0)} H/s` : "--";
+
+        if (rg) {
+            const rate = fmtRateHs(rg.total_hs, "") ?? "--";
 
             minerRight += `
                 <div class="miner-row">
                     <b>Rigel</b> — ${rate}
-                    <span style="float:right;color:#aaa">${fmtUptime(rg.uptime_s)}</span>
+                    <span style="float:right;color:#aaa">
+                        ${fmtUptime(rg.uptime_s)}
+                    </span>
                 </div>`;
         }
-		if (srb) {
-            const rate =
-            srb.total_hs >= 1e6 ? `${(srb.total_hs / 1e6).toFixed(2)} MH/s` :
-            srb.total_hs >= 1e3 ? `${(srb.total_hs / 1e3).toFixed(2)} kH/s` :
-            srb.total_hs ? `${srb.total_hs.toFixed(0)} H/s` : "--";
+
+        if (srb) {
+            const rate = fmtRateHs(srb.total_hs, "") ?? "--";
 
             minerRight += `
                 <div class="miner-row">
                     <b>SRBMiner</b> — ${rate}
-                    <span style="float:right;color:#aaa">${fmtUptime(srb.uptime_s)}</span>
+                    <span style="float:right;color:#aaa">
+                        ${fmtUptime(srb.uptime_s)}
+                    </span>
                 </div>`;
         }
 
+
         /* ---------------- Summary ---------------- */
         const minerSummary = [
-            bz?.total_mhs > 0
-                ? `${bz.total_mhs.toFixed(1)} MH/s BzMiner`
-                : null,
-
-            xm?.total_khs > 0
-                ? `${xm.total_khs.toFixed(1)} kH/s XMRig`
-                : xm?.total_hs > 0
-                    ? `${xm.total_hs.toFixed(0)} H/s XMRig`
-                    : null,
-
-            rg?.total_hs > 0
-                ? (
-                    rg.total_hs >= 1e6
-                        ? `${(rg.total_hs / 1e6).toFixed(1)} MH/s Rigel`
-                        : rg.total_hs >= 1e3
-                            ? `${(rg.total_hs / 1e3).toFixed(1)} kH/s Rigel`
-                            : `${rg.total_hs.toFixed(0)} H/s Rigel`
+            bz
+                ? fmtRateHs(
+                    bz.total_hs ??
+                        (bz.total_mhs ? bz.total_mhs * 1e6 : null),
+                    "BzMiner"
                 )
                 : null,
 
+            xm?.total_hs > 0
+                ? `${fmtXmrig(xm.total_hs)} XMRig`
+                : null,
+
+            rg?.total_hs > 0
+                ? fmtRateHs(rg.total_hs, "Rigel")
+                : null,
+
             srb?.total_hs > 0
-                ? `${(srb.total_hs / 1e3).toFixed(1)} kH/s SRBMiner`
+                ? fmtRateHs(srb.total_hs, "SRBMiner")
                 : null
-        ].filter(Boolean).join(" | ");
+        ]
+            .filter(Boolean)
+            .join(" | ");
+
 
         /* ================= ROW BUILD ================= */
 
@@ -438,6 +442,7 @@ function render() {
 }
 
 /* -------------------- Actions -------------------- */
+
 async function hardReset(ev) {
     ev.preventDefault();
     ev.stopPropagation();
@@ -459,6 +464,213 @@ async function hardReset(ev) {
     }
 }
 
+async function sendCommandToSelectedRigs(command) {
+    if (selectedRigs.size === 0) {
+        alert("No rigs selected");
+        return;
+    }
+
+    return fetch("/dashboard/command", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            rigs: Array.from(selectedRigs),
+            command: command
+        })
+    });
+}
+
+function submitCmd() {
+    const cmd = document.getElementById("cmd-input").value.trim();
+    if (!cmd) return;
+
+    sendCommandToSelectedRigs(cmd).catch(err => {
+        console.error("Command send failed", err);
+        alert("Failed to send command");
+    });
+}
+
+function gpuStart() {
+    sendCommandToSelectedRigs("gpu.start");
+}
+
+function gpuStop() {
+    sendCommandToSelectedRigs("gpu.stop");
+}
+
+function gpuRestart() {
+    sendCommandToSelectedRigs("gpu.restart");
+}
+
+function cpuStart() {
+    sendCommandToSelectedRigs("cpu.start");
+}
+
+function cpuStop() {
+    sendCommandToSelectedRigs("cpu.stop");
+}
+
+function cpuRestart() {
+    sendCommandToSelectedRigs("cpu.restart");
+}
+
+function commonStart() {
+    sendCommandToSelectedRigs("common.start");
+}
+
+function commonStop() {
+    sendCommandToSelectedRigs("common.stop");
+}
+
+function commonRestart() {
+    sendCommandToSelectedRigs("common.restart");
+}
+
+function setModeCPU() {
+    sendCommandToSelectedRigs("mode.set CPU");
+}
+
+function setModeGPU() {
+    sendCommandToSelectedRigs("mode.set GPU");
+}
+
+function setModeCommon() {
+    sendCommandToSelectedRigs("mode.set COMMON");
+}
+
+function rebootSystem() {
+    if (!confirm("Reboot selected rigs?")) return;
+    sendCommandToSelectedRigs("reboot");
+}
+
+function runRawShell(commandText) {
+    if (!commandText || !commandText.trim()) return;
+    sendCommandToSelectedRigs(commandText);
+}
+
+/* -------------------- UI helpers -------------------- */
+
+function setActionMode(mode) {
+    if (!["cpu", "gpu", "common"].includes(mode)) return;
+
+    currentActionMode = mode;
+    localStorage.setItem("actionMode", mode);
+
+    // Update UI
+    document.querySelectorAll(".action-tab").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.mode === mode);
+    });
+
+    // Optional status text
+    setActionOutput(
+        mode === "cpu" ? "Mode set: CPU" :
+        mode === "gpu" ? "Mode set: GPU" :
+                         "Mode set: BOTH"
+    );
+}
+
+
+
+function setActionOutput(text) {
+    const el = document.getElementById("action-output");
+    if (!el) return;
+
+    el.value = text;
+}
+
+function actionStart() {
+    const label =
+        currentActionMode === "cpu" ? "Start CPU miners" :
+        currentActionMode === "gpu" ? "Start GPU miners" :
+        "Start ALL miners";
+
+    if (!confirmAction(label)) return;
+	
+	setActionOutput(label + "…");
+
+    if (currentActionMode === "cpu") cpuStart();
+    else if (currentActionMode === "gpu") gpuStart();
+    else commonStart();
+}
+
+function actionStop() {
+    const label =
+        currentActionMode === "cpu" ? "Stop CPU miners" :
+        currentActionMode === "gpu" ? "Stop GPU miners" :
+        "Stop ALL miners";
+
+    if (!confirmAction(label)) return;
+	
+	setActionOutput(label + "…");
+
+    if (currentActionMode === "cpu") cpuStop();
+    else if (currentActionMode === "gpu") gpuStop();
+    else commonStop();
+}
+
+function actionRestart() {
+    const label =
+        currentActionMode === "cpu" ? "Restart CPU miners" :
+        currentActionMode === "gpu" ? "Restart GPU miners" :
+        "Restart ALL miners";
+
+    if (!confirmAction(label)) return;
+	
+	setActionOutput(label + "…");
+
+    if (currentActionMode === "cpu") cpuRestart();
+    else if (currentActionMode === "gpu") gpuRestart();
+    else commonRestart();
+}
+
+function updateSelectButton() {
+    const btn = document.getElementById("btn-toggle-select");
+    if (!btn) return;
+
+    const total = Object.keys(rigsState).length;
+
+    btn.textContent =
+        selectedRigs.size === total && total > 0 ? "☑" : "☐";
+}
+
+function confirmAction(actionLabel) {
+    const count = selectedRigs.size;
+
+    if (count === 0) {
+        alert("No rigs selected");
+        return false;
+    }
+
+    return window.confirm(
+        `${actionLabel} on ${count} selected rig${count !== 1 ? "s" : ""}?`
+    );
+}
+
+
+function openCmdModal() {
+    if (selectedRigs.size === 0) {
+        alert("No rigs selected");
+        return;
+    }
+
+    document.getElementById("cmd-target-count").textContent =
+        selectedRigs.size;
+
+    const modal = document.getElementById("cmd-modal");
+    const input = document.getElementById("cmd-input");
+
+    const out = document.getElementById("cmd-output");
+    if (out) out.textContent = "";
+
+    modal.classList.remove("hidden");
+    input.value = "";
+    input.focus();
+}
+
+function closeCmdModal() {
+    document.getElementById("cmd-modal").classList.add("hidden");
+}
+
 function setResetButtonDisabled(disabled) {
     const btn = document.querySelector(".reset-btn");
     if (!btn) return;
@@ -466,7 +678,6 @@ function setResetButtonDisabled(disabled) {
     btn.style.pointerEvents = disabled ? "none" : "auto";
 }
 
-/* -------------------- UI helpers -------------------- */
 function toggleDocker(id) {
     popoverState[id] = !popoverState[id];
     render();
