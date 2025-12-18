@@ -9,7 +9,7 @@ html Dashboard for ubuntu server / hiveos rigs...
 
 ![Dashboard Screenshot-popout](Screenshot-popout.png)
 
-** most recent file versions in repos **
+** most recent files in repos **
 
 windows setup:
 install python on whatever pc you want to use as website backend
