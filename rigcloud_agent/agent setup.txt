@@ -1,19 +1,18 @@
-
-sudo systemctl stop rigcloud-agent.service
+ubuntu:
 
 sudo apt update
 sudo apt install -y python3 python3-pip jq ca-certificates curl
 sudo python3 -m pip install aiomqtt typing_extensions paho-mqtt --break-system-packages
 
-#sudo pip install psutil --break-system-packages
-
 hiveos:
+
 sudo apt update
 sudo apt install -y python3-pip
 sudo pip3 install aiomqtt typing_extensions paho-mqtt
 
-sudo mkdir -p /etc/rigcloud
+AWS:
 
+sudo mkdir -p /etc/rigcloud
 sudo chmod 700 /etc/rigcloud
 
 # Set correct ownership for ALL files
