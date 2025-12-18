@@ -4,27 +4,20 @@ CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, M
 
 ![Dashboard Screenshot](Screenshot.png)
 
-rigs and dashboard backend talk to a MQTT Broker... can be run local on windows, raspberry pi, or amazon aws
-
-... requires little setup just acts as a go between
-
-rigcloud_dashboard_server.py connects to MQTT Broker as dashboard backend
-
-'MOSQUITTO START' - remove this section from server.py if not on windows, and if from entry point
-
-rigcloud_agent.py runs on rigs to collect stats on demand, accept commands, talks to MQTT Broker
-
-raspberry pi setup - uses Docker, duckdns, caddy, mqtt, rigcloud_dashboard_server.py in a container
-
-visual studio project files in repos to make development a little easier
-
-setup notes for mosquitto-bridge mode in repos to use visual studio while rigs are still pointed at pi/aws
-
-general cmds received by rigs get handled by rigcloud_cmd.sh
-
-data hard reset, select buttons, and send command work for now, bzminer and xmrig hashrates
-
 most recent version in repos
+
+windows setup:
+install python on whatever pc you want to use as website backend
+load rigcloud_dashboard_server.py add any modules it needs, can use visual studio community
+install x64 version of mqtt broker from https://mosquitto.org/download/
+modify the mqtt conf file to use user pass login and remote connections, set password etc
+set mode to local in rigcloud_dashboard_server.py will try and run mqtt on start hidden
+
+on mining/AI rigs:
+write rigcloud_agent.py, rigcloud_telemetry.py, rigcloud_cmd.sh, 
+and rigcloud-agent.conf with your login for mqtt
+create service with rigcloud_agent-service.sh
+should see mqtt connected in logs
 
 ![file-create Screenshot](Screenshot-file-create.png)
 
