@@ -1,10 +1,20 @@
-html Dashboard for ubuntu server / hiveos rigs... click a rig to show more details
+html Dashboard for ubuntu server rigs...
 
-CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service active, Miner, Containers running
+- click a rig shows more details about docker containers running etc
+- cpu / gpu services play, stop, restart, customisable in rigcloud_cmd.sh
+- custom commands with reply, install miners, create files with tee echo etc
+- index.html serves dashboard, can customise colors etc
+- CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service active, Miner, Containers running
 
 ![Dashboard Screenshot](Screenshot.png)
 
-** most recent file versions in repos **
+![Dashboard Screenshot-popout](Screenshot-popout.png)
+
+** most recent files in repos **
+- xmrig,bzminer,rigel hashrates
+- srbminer configured, not confirmed working
+- api settings need to be in cmd line
+- bzminer works by default without any api settings
 
 windows setup:
 install python on whatever pc you want to use as website backend
@@ -19,6 +29,8 @@ write rigcloud_agent.py, rigcloud_telemetry.py, rigcloud_cmd.sh,
 and rigcloud-agent.conf with your login for mqtt
 create service with rigcloud_agent-service.sh
 should see mqtt connected in logs
+
+- multiple commands
 
 ![file-create Screenshot](Screenshot-file-create.png)
 
