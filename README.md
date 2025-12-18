@@ -22,6 +22,7 @@ windows setup:
 - load rigcloud_dashboard_server.py add any modules it needs, can use visual studio community
 - install x64 version of mqtt broker from https://mosquitto.org/download/
 - modify the mqtt conf file see mosquitto.conf
+- create a login 'mosquitto_passwd -c /mosquitto/config/passwords admin'
 - set mode to local in rigcloud_dashboard_server.py will try and run mqtt on start hidden
 
 on mining/AI rigs:
