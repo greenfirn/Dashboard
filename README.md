@@ -4,6 +4,8 @@ CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, M
 
 ![Dashboard Screenshot](Screenshot.png)
 
+![Dashboard Screenshot-popout](Screenshot-popout.png)
+
 ** most recent file versions in repos **
 
 windows setup:
