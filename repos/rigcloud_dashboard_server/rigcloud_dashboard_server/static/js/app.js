@@ -270,11 +270,13 @@ function render() {
             `).join("");
 
         /* ---------------- Miners ---------------- */
-        const bz = d.miner_bzminer;
+        const rg = d.miner_rigel;
+        const srb = d.miner_srbminer;
+		const bz = d.miner_bzminer;
         const xm = d.miner_xmrig;
 
         let minerRight = "";
-        if (bz || xm) minerRight += `<div class="docker-header">Miners</div>`;
+        if (bz || xm || rg || srb) minerRight += `<div class="docker-header">Miners</div>`;
 
         if (bz) {
             minerRight += `
@@ -295,12 +297,56 @@ function render() {
                     <span style="float:right;color:#aaa">${fmtUptime(xm.uptime_s)}</span>
                 </div>`;
         }
+		if (rg) {
+            const rate =
+            rg.total_hs >= 1e6 ? `${(rg.total_hs / 1e6).toFixed(2)} MH/s` :
+            rg.total_hs >= 1e3 ? `${(rg.total_hs / 1e3).toFixed(2)} kH/s` :
+            rg.total_hs ? `${rg.total_hs.toFixed(0)} H/s` : "--";
+
+            minerRight += `
+                <div class="miner-row">
+                    <b>Rigel</b> — ${rate}
+                    <span style="float:right;color:#aaa">${fmtUptime(rg.uptime_s)}</span>
+                </div>`;
+        }
+		if (srb) {
+            const rate =
+            srb.total_hs >= 1e6 ? `${(srb.total_hs / 1e6).toFixed(2)} MH/s` :
+            srb.total_hs >= 1e3 ? `${(srb.total_hs / 1e3).toFixed(2)} kH/s` :
+            srb.total_hs ? `${srb.total_hs.toFixed(0)} H/s` : "--";
+
+            minerRight += `
+                <div class="miner-row">
+                    <b>SRBMiner</b> — ${rate}
+                    <span style="float:right;color:#aaa">${fmtUptime(srb.uptime_s)}</span>
+                </div>`;
+        }
 
         /* ---------------- Summary ---------------- */
         const minerSummary = [
-            bz?.total_mhs > 0 ? `${bz.total_mhs.toFixed(1)} MH/s BzMiner` : null,
-            xm?.total_khs > 0 ? `${xm.total_khs.toFixed(1)} kH/s XMrig` :
-            xm?.total_hs > 0 ? `${xm.total_hs.toFixed(0)} H/s XMrig` : null
+            bz?.total_mhs > 0
+                ? `${bz.total_mhs.toFixed(1)} MH/s BzMiner`
+                : null,
+
+            xm?.total_khs > 0
+                ? `${xm.total_khs.toFixed(1)} kH/s XMRig`
+                : xm?.total_hs > 0
+                    ? `${xm.total_hs.toFixed(0)} H/s XMRig`
+                    : null,
+
+            rg?.total_hs > 0
+                ? (
+                    rg.total_hs >= 1e6
+                        ? `${(rg.total_hs / 1e6).toFixed(1)} MH/s Rigel`
+                        : rg.total_hs >= 1e3
+                            ? `${(rg.total_hs / 1e3).toFixed(1)} kH/s Rigel`
+                            : `${rg.total_hs.toFixed(0)} H/s Rigel`
+                )
+                : null,
+
+            srb?.total_hs > 0
+                ? `${(srb.total_hs / 1e3).toFixed(1)} kH/s SRBMiner`
+                : null
         ].filter(Boolean).join(" | ");
 
         /* ================= ROW BUILD ================= */

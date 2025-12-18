@@ -1,3 +1,4 @@
+sudo tee /usr/local/bin/rigcloud_telemetry.py > /dev/null <<'EOF'
 # ========== TELEMETRY ===================================
 # rigcloud_telemetry.py
 import os
@@ -273,7 +274,6 @@ def collect_service_uptime(service):
     except:
         return {"state": "unknown", "uptime_seconds": 0}
 
-
 def collect_bzminer_stats():
     API_URL = "http://127.0.0.1:4014/status"
     try:
@@ -297,6 +297,118 @@ def collect_bzminer_stats():
         "rejected": pool0.get("rejected_solutions")
     }
 
+def collect_rigel_stats():
+    host = os.environ.get("RIGEL_API_HOST", "127.0.0.1")
+    port = int(os.environ.get("RIGEL_API_PORT", "5000"))
+    url = f"http://{host}:{port}"
+
+    try:
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=1.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        return {"status": "offline", "error": str(e)}
+
+    # -------- Safe extraction --------
+    uptime_s = (
+        data.get("uptime")
+        or data.get("uptime_s")
+        or data.get("session", {}).get("uptime")
+    )
+
+    algo = (
+        data.get("algorithm")
+        or data.get("algo")
+        or data.get("session", {}).get("algo")
+    )
+
+    # Hashrate normalization
+    total_hs = None
+    hr = data.get("hashrate") or data.get("hashrates")
+
+    if isinstance(hr, dict):
+        total_hs = (
+            hr.get("total")
+            or hr.get("total_hs")
+            or hr.get("hashrate")
+        )
+
+    accepted = (
+        data.get("accepted")
+        or data.get("shares", {}).get("accepted")
+    )
+
+    rejected = (
+        data.get("rejected")
+        or data.get("shares", {}).get("rejected")
+    )
+
+    return {
+        "status": "ok",
+        "algo": algo,
+        "uptime_s": uptime_s,
+        "total_hs": total_hs,
+        "accepted": accepted,
+        "rejected": rejected
+    }
+
+def collect_srbminer_stats():
+    host = os.environ.get("SRB_API_HOST", "127.0.0.1")
+    port = int(os.environ.get("SRB_API_PORT", "21550"))
+    url = f"http://{host}:{port}"
+
+    try:
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=1.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        return {"status": "offline", "error": str(e)}
+
+    # -------------------------------
+    # Safe field extraction
+    # -------------------------------
+    uptime_s = (
+        data.get("uptime")
+        or data.get("uptime_s")
+        or data.get("session", {}).get("uptime")
+    )
+
+    algo = (
+        data.get("algorithm")
+        or data.get("algo")
+        or data.get("session", {}).get("algorithm")
+    )
+
+    # Total hashrate (H/s)
+    total_hs = None
+    hr = data.get("hashrate") or data.get("hashrates")
+
+    if isinstance(hr, dict):
+        total_hs = (
+            hr.get("total")
+            or hr.get("total_hashrate")
+            or hr.get("hashrate")
+        )
+
+    # Shares
+    accepted = (
+        data.get("accepted")
+        or data.get("shares", {}).get("accepted")
+    )
+
+    rejected = (
+        data.get("rejected")
+        or data.get("shares", {}).get("rejected")
+    )
+
+    return {
+        "status": "ok",
+        "algo": algo,
+        "uptime_s": uptime_s,
+        "total_hs": total_hs,
+        "accepted": accepted,
+        "rejected": rejected
+    }
 
 def collect_xmrig_stats():
     host = os.environ.get("XMRIG_HTTP_HOST", "127.0.0.1")
@@ -341,9 +453,14 @@ def collect_full_stats():
         "memory": collect_memory(),
 		"gpu_present": gpu_present,
         "gpus": collect_gpu_stats() if gpu_present else [],
+        "miner_rigel": collect_rigel_stats(),
         "miner_bzminer": collect_bzminer_stats(),
+        "miner_srbminer": collect_srbminer_stats(),
         "miner_xmrig": collect_xmrig_stats(),
         "docker": collect_docker_containers(),
         "cpu_service": collect_service_uptime("docker_events_cpu.service"),
         "gpu_service": collect_service_uptime("docker_events_gpu.service"),
     }
+EOF
+sudo systemctl restart rigcloud-agent
+sudo systemctl is-active rigcloud-agent
