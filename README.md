@@ -11,6 +11,8 @@ html Dashboard for ubuntu server rigs...
 ![Dashboard Screenshot-popout](Screenshot-popout.png)
 
 ** most recent files in repos **
+- xmrig,bzminer,rigel hashrates
+- some others configured, not confirmed working
 
 windows setup:
 install python on whatever pc you want to use as website backend
