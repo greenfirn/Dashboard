@@ -4,7 +4,7 @@ CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, M
 
 ![Dashboard Screenshot](Screenshot.png)
 
-most recent version in repos
+** most recent file versions in repos **
 
 windows setup:
 install python on whatever pc you want to use as website backend
