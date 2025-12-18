@@ -2,6 +2,7 @@ html Dashboard for ubuntu server / hiveos rigs...
 
 - click a rig shows more details about docker containers running etc
 - selected rigs: play, stop, restart control rig cpu / gpu services, custom commands with reply
+- index.html serves dashboard, can customise colors etc
 - CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service active, Miner, Containers running
 
 ![Dashboard Screenshot](Screenshot.png)
