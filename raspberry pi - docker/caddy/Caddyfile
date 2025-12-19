@@ -6,7 +6,7 @@
 ########################################
 # PUBLIC — HTTPS + AUTH
 ########################################
-bhassio.duckdns.org {
+*****.duckdns.org {
 
     # Canonical slash (fixes white screen)
     redir /dashboard /dashboard/ 308

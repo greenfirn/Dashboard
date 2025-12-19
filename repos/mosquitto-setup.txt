@@ -26,14 +26,3 @@ log_type all
 
 
 "C:\Program Files\mosquitto\mosquitto.exe" -c "C:\Program Files\mosquitto\mosquitto.conf" -v
-
-sc create mosquitto ^
-  binPath= "\"C:\Program Files\mosquitto\mosquitto.exe\" -c \"C:\Program Files\mosquitto\mosquitto.conf\"" ^
-  start= auto ^
-  DisplayName= "Mosquitto Broker"
-
-sc qc mosquitto
-
-net start mosquitto
-
-
