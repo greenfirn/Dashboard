@@ -44,6 +44,7 @@ aws advanced setup:
 - requires unique certificates on website backend and all the mining/AI rigs
 - duckdns or similar for connecting to your public ip
 - caddy handles certificates, routing
+- running server.py on aws lambda might be possible havnt looked into it yet
 
 server start, client connect, disconnect...
 
