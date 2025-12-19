@@ -136,3 +136,6 @@ case "$CMD" in
         ;;
 esac
 EOF
+
+# make executable
+sudo chmod +x /home/user/rigcloud_cmd.sh
