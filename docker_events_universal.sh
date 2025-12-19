@@ -187,4 +187,5 @@ done
 echo "[GPU-RESET] Complete."
 EOF
 
+# make it executable
 sudo chmod +x /usr/local/bin/gpu_reset_poststop.sh
