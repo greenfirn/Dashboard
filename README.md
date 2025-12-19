@@ -17,6 +17,7 @@ html Dashboard for ubuntu server rigs...
 - api settings need to be in cmd line,
 - bzminer works by default
 - see api bind settings.txt
+- 'Both' is meant to play/stop/start a 3rd CPU and GPU script
 
 windows setup:
 - install python on whatever pc you want to use as website backend
