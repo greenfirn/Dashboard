@@ -5,6 +5,7 @@ html Dashboard for ubuntu server rigs...
 - see install-services.sh and docker_events_universal.sh
 - custom commands with reply, install miners, create files with tee echo etc
 - index.html serves dashboard, customise colors etc in .css file
+- working on more capabilities, design is just what chatgpt suggested for dark theme
 - CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service, Miner, Containers running
 
 ![Dashboard Screenshot](Screenshot.png)
