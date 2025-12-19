@@ -47,4 +47,4 @@ server start, client connect, disconnect...
 
 ![Dashboard connect](Screenshot-client-connect-disconnect.png)
 
-Some portions of this project were developed with assistance from ChatGPT.
+developed with assistance from ChatGPT.
