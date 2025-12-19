@@ -23,6 +23,7 @@ windows setup:
 - install python on whatever pc you want to use as website backend
 - load rigcloud_dashboard_server.py add any modules it needs, can use visual studio community
 - install x64 version of mqtt broker from https://mosquitto.org/download/
+- the windows service option doesnt work for this purpose
 - modify the mqtt conf file in 'C:\Program Files\mosquitto' see mosquitto.conf
 - create a folder for password file and data 'C:\mosquitto', 'C:\mosquitto\data'
 - create a login 'C:\Program Files\mosquitto\mosquitto_passwd -c C:\mosquitto\ admin'
