@@ -309,45 +309,37 @@ def collect_rigel_stats():
     except Exception as e:
         return {"status": "offline", "error": str(e)}
 
-    # -------- Safe extraction --------
-    uptime_s = (
-        data.get("uptime")
-        or data.get("uptime_s")
-        or data.get("session", {}).get("uptime")
-    )
+    algo = data.get("algorithm")
+    uptime_s = data.get("uptime")
 
-    algo = (
-        data.get("algorithm")
-        or data.get("algo")
-        or data.get("session", {}).get("algo")
-    )
-
-    # Hashrate normalization
     total_hs = None
-    hr = data.get("hashrate") or data.get("hashrates")
+    pool_hs = None
 
-    if isinstance(hr, dict):
-        total_hs = (
-            hr.get("total")
-            or hr.get("total_hs")
-            or hr.get("hashrate")
-        )
+    # Rigel reports hashrate per-algorithm
+    hr = data.get("hashrate", {})
+    phr = data.get("pool_hashrate", {})
 
-    accepted = (
-        data.get("accepted")
-        or data.get("shares", {}).get("accepted")
-    )
+    if algo and isinstance(hr, dict):
+        total_hs = hr.get(algo)
 
-    rejected = (
-        data.get("rejected")
-        or data.get("shares", {}).get("rejected")
-    )
+    if algo and isinstance(phr, dict):
+        pool_hs = phr.get(algo)
+
+    # Shares (global)
+    accepted = None
+    rejected = None
+
+    sol = data.get("solution_stat", {}).get(algo)
+    if isinstance(sol, dict):
+        accepted = sol.get("accepted")
+        rejected = sol.get("rejected")
 
     return {
         "status": "ok",
         "algo": algo,
         "uptime_s": uptime_s,
         "total_hs": total_hs,
+        "pool_hs": pool_hs,
         "accepted": accepted,
         "rejected": rejected
     }
@@ -451,7 +443,7 @@ def collect_full_stats():
         "cpu_usage": collect_cpu_usage(),
         "load": collect_load(),
         "memory": collect_memory(),
-		"gpu_present": gpu_present,
+                "gpu_present": gpu_present,
         "gpus": collect_gpu_stats() if gpu_present else [],
         "miner_rigel": collect_rigel_stats(),
         "miner_bzminer": collect_bzminer_stats(),
@@ -461,6 +453,7 @@ def collect_full_stats():
         "cpu_service": collect_service_uptime("docker_events_cpu.service"),
         "gpu_service": collect_service_uptime("docker_events_gpu.service"),
     }
+
 EOF
 sudo systemctl restart rigcloud-agent
 sudo systemctl is-active rigcloud-agent
