@@ -1,0 +1,18 @@
+https://www.python.org/downloads/windows/
+
+requirements.txt
+fastapi
+uvicorn
+paho-mqtt
+python-multipart
+aiofiles
+websockets
+jinja2
+psutil
+
+python -m pip install -r requirements.txt
+
+add to path:
+
+C:\Users\<your-username>\AppData\Local\Python\pythoncore-3.14-64\Scripts
+

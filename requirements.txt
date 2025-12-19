@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+paho-mqtt
+python-multipart
+aiofiles
+websockets
+jinja2
+psutil
