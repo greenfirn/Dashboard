@@ -21,6 +21,8 @@ Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 WantedBy=multi-user.target
 EOF
 
+#========================================================================================================
+
 # -- write CPU service --
 
 sudo tee /etc/systemd/system/docker_events_cpu.service > /dev/null <<'EOF'
@@ -44,7 +46,6 @@ WantedBy=multi-user.target
 EOF
 
 #========================================================================================================
-#========================================================================================================
 
 # let daemon know about changes
 sudo systemctl daemon-reload
@@ -55,3 +56,12 @@ sudo systemctl daemon-reload
 
 # sudo systemctl enable docker_events_cpu.service
 # sudo systemctl start docker_events_cpu.service
+
+#========================================================================================================
+
+# sudo systemctl stop docker_events_gpu.service
+# sudo systemctl stop docker_events_cpu.service
+
+# disable so it doesnt start on boot
+# sudo systemctl disable docker_events_gpu.service
+# sudo systemctl disable docker_events_cpu.service
