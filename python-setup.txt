@@ -8,7 +8,7 @@ python-multipart
 aiofiles
 websockets
 jinja2
-psutil
+psutil <-- for auto starting mqtt on windows only
 
 python -m pip install -r requirements.txt
 
