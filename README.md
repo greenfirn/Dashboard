@@ -50,4 +50,7 @@ server start, client connect, disconnect...
 
 ![Dashboard connect](Screenshot-client-connect-disconnect.png)
 
+- created a server client mqtt setup before with c# for a Alexa app that could send controls to my local PC
+- already familiar with the general setup, python is new to me though
+
 developed with assistance from ChatGPT.
