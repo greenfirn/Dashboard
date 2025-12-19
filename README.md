@@ -28,7 +28,6 @@ windows setup:
 - create a folder for password file and data 'C:\mosquitto', 'C:\mosquitto\data'
 - create a login 'C:\Program Files\mosquitto\mosquitto_passwd -c C:\mosquitto\ admin'
 - set mode to local near top of rigcloud_dashboard_server.py will run mqtt on start hidden
-
 - if not running on windows or dont want mosquitto to start with the server
 - remove the mosquitto start functions and if statement near bottom of .py
 
