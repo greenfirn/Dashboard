@@ -39,7 +39,7 @@ on mining/AI rigs:
 - should see mqtt connected in logs
 
 aws advanced setup:
-- requires unique certificates on website backend pc and all the mining/AI rigs
+- requires unique certificates on website backend and all the mining/AI rigs
 - duckdns or similar for connecting to your public ip
 - caddy handles certificates, routing
 
