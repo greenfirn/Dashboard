@@ -149,34 +149,8 @@ while read -r type action name image; do
 done
 EOF
 
-# -- write GPU service --
-
-sudo tee /etc/systemd/system/docker_events_gpu.service > /dev/null <<'EOF'
-[Unit]
-Description=docker_events_gpu Watchdog
-After=docker.service nvidia-persistenced.service
-Requires=docker.service
-
-[Service]
-User=root
-ExecStartPre=/bin/chmod +x /usr/local/bin/docker_events_universal.sh
-ExecStart=/usr/local/bin/docker_events_universal.sh
-Restart=always
-RestartSec=2
-Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable docker_events_gpu.service
-sudo systemctl start docker_events_gpu.service
-
-sudo journalctl -u docker_events_gpu.service -f
-
 # -- gpu_reset not needed for clore when using oc profiles --
-# -- leave commented out in service --
+# -- leave commented out in services --
 
 sudo tee /usr/local/bin/gpu_reset_poststop.sh > /dev/null <<'EOF'
 #!/bin/bash
