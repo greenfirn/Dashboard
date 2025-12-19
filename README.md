@@ -1,7 +1,7 @@
 html Dashboard for ubuntu server rigs...
 
 - click a rig shows more details about docker containers running etc
-- cpu / gpu services play, stop, restart, customisable in rigcloud_cmd.sh
+- cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
 - see 'install - services.sh'
 - custom commands with reply, install miners, create files with tee echo etc
 - index.html serves dashboard, customise colors etc
@@ -17,7 +17,7 @@ html Dashboard for ubuntu server rigs...
 - api settings need to be in cmd line,
 - bzminer works by default
 - see api bind settings.txt
-- 'Both' is meant to play/stop/start a 3rd CPU and GPU script
+- 'Both' is meant to start, stop, restart a 3rd CPU and GPU service
 
 windows setup:
 - install python on whatever pc you want to use as website backend
