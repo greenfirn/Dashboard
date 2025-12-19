@@ -4,7 +4,7 @@ html Dashboard for ubuntu server rigs...
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
 - see install-services.sh and docker_events_universal.sh
 - custom commands with reply, install miners, create files with tee echo etc
-- index.html serves dashboard, customise colors etc
+- index.html serves dashboard, customise colors etc in .css file
 - CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service, Miner, Containers running
 
 ![Dashboard Screenshot](Screenshot.png)
