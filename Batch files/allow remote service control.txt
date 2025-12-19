@@ -7,7 +7,5 @@ sudo visudo
 
 #== CPU/GPU control service ==
 user ALL=(ALL) NOPASSWD: /usr/bin/systemctl * docker_events_gpu.service, \
-                         /usr/bin/systemctl * docker_events_cpu.service
-
-
-
+                         /usr/bin/systemctl * docker_events_cpu.service, \
+                         /usr/bin/systemctl * rigcloud-agent.service
