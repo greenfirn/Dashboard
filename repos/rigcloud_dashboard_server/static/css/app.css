@@ -88,7 +88,7 @@ h1 {
 }
 
 .action-btn {
-    width: 28px;
+    width: 44px;
     height: 28px;
 
     display: flex;
@@ -290,8 +290,8 @@ h1 {
 }
 
 .cmd-btn {
-    min-width: 90px;
-    height: 32px;
+    min-width: 44px;
+    height: 28px;
 
     border-radius: 6px;
     border: 1px solid #2e2e2e;

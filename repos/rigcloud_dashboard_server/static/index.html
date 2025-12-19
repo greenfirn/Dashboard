@@ -18,7 +18,7 @@
             title="Send command to selected rigs">
             ⌘
         </button>
-
+        <span class="action-mode-sep"></span>
         <button
             class="action-btn"
             id="btn-toggle-select"
@@ -29,8 +29,7 @@
 
     <!-- MODE SELECT -->
     <div class="action-modes">
-        <button class="action-tab" data-mode="all" onclick="setActionMode('all')">ALL</button>
-		<span class="action-mode-sep"></span>
+		<button class="action-tab" data-mode="all" onclick="setActionMode('all')">ALL</button>
 		<button class="action-tab active" data-mode="cpu" onclick="setActionMode('cpu')">CPU</button>
         <button class="action-tab" data-mode="gpu" onclick="setActionMode('gpu')">GPU</button>
 		<span class="action-mode-sep"></span>

@@ -157,6 +157,7 @@ async function fetchRigsOnce() {
 }
 
 function toggleSelectAll() {
+
     const rigNames = Object.keys(rigsState)
         .filter(name => name !== "rigs");
 
@@ -176,9 +177,8 @@ function toggleSelectAll() {
         if (currentActionMode === "gpu") {
             return gpuActive;
         }
-
-        // common / both
-        return cpuActive || gpuActive;
+		
+		if (currentActionMode === "common") return true;
     });
 
     if (eligible.length === 0) return;
@@ -684,7 +684,7 @@ function setActionMode(mode) {
     document.querySelectorAll(".action-tab").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.mode === mode);
     });
-
+    
     setActionOutput(`Mode: ${mode.toUpperCase()}`);
 }
 
