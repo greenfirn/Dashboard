@@ -65,3 +65,7 @@ sudo systemctl daemon-reload
 # disable so it doesnt start on boot
 # sudo systemctl disable docker_events_gpu.service
 # sudo systemctl disable docker_events_cpu.service
+
+# watch logs
+# sudo journalctl -u docker_events_gpu.service -f
+# sudo journalctl -u docker_events_cpu.service -f
