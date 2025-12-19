@@ -20,7 +20,7 @@ html Dashboard for ubuntu server rigs...
 - 'Both' is meant to start, stop, restart a 3rd CPU and GPU service
 
 windows setup:
-- install python on whatever pc you want to use as website backend
+- install python on whatever pc you want to use as website backend see python-setup.txt
 - load rigcloud_dashboard_server.py add any modules it needs, can use visual studio community
 - install x64 version of mqtt broker from https://mosquitto.org/download/
 - the windows service option doesnt work for this purpose
