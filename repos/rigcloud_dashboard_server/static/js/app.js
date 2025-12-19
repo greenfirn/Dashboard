@@ -3,7 +3,7 @@ let popoverState = {};
 let lastUpdateTs = 0;
 let resetInProgress = false;
 let selectedRigs = new Set();
-let currentActionMode = localStorage.getItem("actionMode") || "common";
+let currentActionMode = localStorage.getItem("actionMode") || "all";
 
 document.addEventListener("DOMContentLoaded", () => {
     // Toggle select all
@@ -157,26 +157,138 @@ async function fetchRigsOnce() {
 }
 
 function toggleSelectAll() {
-    const rigNames = Object.keys(rigsState);
+    const rigNames = Object.keys(rigsState)
+        .filter(name => name !== "rigs");
 
-    if (rigNames.length === 0) {
-        return;
-    }
+    if (rigNames.length === 0) return;
 
-    // If ALL rigs are selected → clear
-    if (selectedRigs.size === rigNames.length) {
-        selectedRigs.clear();
-    } 
-    // Otherwise → select all
-    else {
-        selectedRigs.clear();
-        rigNames.forEach(name => selectedRigs.add(name));
+    const eligible = rigNames.filter(name => {
+        const d = rigsState[name]?.data ?? {};
+        const cpuActive = d.cpu_service?.state === "active";
+        const gpuActive = d.gpu_service?.state === "active";
+		
+		if (currentActionMode === "all") return true;
+        
+		if (currentActionMode === "cpu") {
+            return cpuActive;
+        }
+
+        if (currentActionMode === "gpu") {
+            return gpuActive;
+        }
+
+        // common / both
+        return cpuActive || gpuActive;
+    });
+
+    if (eligible.length === 0) return;
+
+    const allSelected = eligible.every(name => selectedRigs.has(name));
+
+    if (allSelected) {
+        eligible.forEach(name => selectedRigs.delete(name));
+    } else {
+        eligible.forEach(name => selectedRigs.add(name));
     }
 
     render();
 }
 
-console.log("rigsState before render:", rigsState);
+function hasPositiveRate(hs) {
+    return typeof hs === "number" && hs > 0;
+}
+
+function updateActionStats() {
+    const wattsEl = document.getElementById("stat-gpu-watts");
+    const hashEl  = document.getElementById("stat-hashrate");
+
+    if (!wattsEl || !hashEl) return;
+
+    let totalWatts = 0;
+
+    // Per-miner totals (HS)
+    const minerTotals = {
+        bzminer: 0,
+        xmrig: 0,
+        rigel: 0,
+        srbminer: 0
+    };
+
+    // Scope:
+    // - selected rigs if any
+    // - otherwise all rigs
+    const rigNames =
+        selectedRigs.size > 0
+            ? Array.from(selectedRigs)
+            : Object.keys(rigsState).filter(n => n !== "rigs");
+
+    rigNames.forEach(name => {
+        const d = rigsState[name]?.data;
+        if (!d) return;
+
+        /* ---------------- GPU watts ---------------- */
+        if (Array.isArray(d.gpus)) {
+            d.gpus.forEach(gpu => {
+                if (typeof gpu.power_watts === "number") {
+                    totalWatts += gpu.power_watts;
+                }
+            });
+        }
+
+        /* ---------------- Miners ---------------- */
+
+        // BzMiner (HS or MHS fallback)
+        if (d.miner_bzminer) {
+            if (typeof d.miner_bzminer.total_hs === "number") {
+                minerTotals.bzminer += d.miner_bzminer.total_hs;
+            } else if (typeof d.miner_bzminer.total_mhs === "number") {
+                minerTotals.bzminer += d.miner_bzminer.total_mhs * 1e6;
+            }
+        }
+
+        // XMRig
+        if (typeof d.miner_xmrig?.total_hs === "number") {
+            minerTotals.xmrig += d.miner_xmrig.total_hs;
+        }
+
+        // Rigel
+        if (typeof d.miner_rigel?.total_hs === "number") {
+            minerTotals.rigel += d.miner_rigel.total_hs;
+        }
+
+        // SRBMiner
+        if (typeof d.miner_srbminer?.total_hs === "number") {
+            minerTotals.srbminer += d.miner_srbminer.total_hs;
+        }
+    });
+
+    /* ---------------- Render GPU watts ---------------- */
+    wattsEl.textContent =
+        totalWatts > 0
+            ? `GPU totals: ${Math.round(totalWatts)} W`
+            : "GPU totals: -- W";
+
+    /* ---------------- Render miner totals ---------------- */
+    const minerParts = [];
+
+    if (minerTotals.bzminer > 0) {
+        minerParts.push(`BzMiner ${fmtRateHs(minerTotals.bzminer, "")}`);
+    }
+    if (minerTotals.xmrig > 0) {
+        minerParts.push(`XMRig ${fmtRateHs(minerTotals.xmrig, "")}`);
+    }
+    if (minerTotals.rigel > 0) {
+        minerParts.push(`Rigel ${fmtRateHs(minerTotals.rigel, "")}`);
+    }
+    if (minerTotals.srbminer > 0) {
+        minerParts.push(`SRBMiner ${fmtRateHs(minerTotals.srbminer, "")}`);
+    }
+
+    hashEl.textContent =
+        minerParts.length > 0
+            ? minerParts.join(" | ")
+            : "--";
+}
 
 /* -------------------- Render -------------------- */
 function render() {
@@ -263,23 +375,26 @@ function render() {
             `).join("");
 
         /* ---------------- Miners ---------------- */
-        const rg = d.miner_rigel;
+        const rg  = d.miner_rigel;
         const srb = d.miner_srbminer;
-        const bz = d.miner_bzminer;
-        const xm = d.miner_xmrig;
+        const bz  = d.miner_bzminer;
+        const xm  = d.miner_xmrig;
 
         let minerRight = "";
-        if (bz || xm || rg || srb) {
-            minerRight += `<div class="docker-header">Miners</div>`;
-        }
 
-        if (bz) {
-            const rate =
-                fmtRateHs(
-                    bz.total_hs ??
-                        (bz.total_mhs ? bz.total_mhs * 1e6 : null),
-                    ""
-                ) ?? "--";
+        /* ----- BzMiner ----- */
+        if (
+            bz &&
+            hasPositiveRate(
+                bz.total_hs ??
+                    (bz.total_mhs ? bz.total_mhs * 1e6 : 0)
+            )
+        ) {
+            const rate = fmtRateHs(
+                bz.total_hs ??
+                    (bz.total_mhs ? bz.total_mhs * 1e6 : null),
+                ""
+            );
 
             minerRight += `
                 <div class="miner-row">
@@ -290,8 +405,9 @@ function render() {
                 </div>`;
         }
 
-        if (xm) {
-            const rate = fmtXmrig(xm.total_hs) ?? "--";
+        /* ----- XMRig ----- */
+        if (xm && hasPositiveRate(xm.total_hs)) {
+            const rate = fmtXmrig(xm.total_hs);
 
             minerRight += `
                 <div class="miner-row">
@@ -302,8 +418,9 @@ function render() {
                 </div>`;
         }
 
-        if (rg) {
-            const rate = fmtRateHs(rg.total_hs, "") ?? "--";
+        /* ----- Rigel ----- */
+        if (rg && hasPositiveRate(rg.total_hs)) {
+            const rate = fmtRateHs(rg.total_hs, "");
 
             minerRight += `
                 <div class="miner-row">
@@ -314,8 +431,9 @@ function render() {
                 </div>`;
         }
 
-        if (srb) {
-            const rate = fmtRateHs(srb.total_hs, "") ?? "--";
+        /* ----- SRBMiner ----- */
+        if (srb && hasPositiveRate(srb.total_hs)) {
+            const rate = fmtRateHs(srb.total_hs, "");
 
             minerRight += `
                 <div class="miner-row">
@@ -326,8 +444,14 @@ function render() {
                 </div>`;
         }
 
+        /* ----- Header only if something rendered ----- */
+        if (minerRight !== "") {
+            minerRight =
+                `<div class="docker-header">Miners</div>` +
+                minerRight;
+        }
 
-        /* ---------------- Summary ---------------- */
+        /* ---------------- Row Summary ---------------- */
         const minerSummary = [
             bz
                 ? fmtRateHs(
@@ -439,6 +563,7 @@ function render() {
     });
 
     updateSelectButton();
+	updateActionStats();
 }
 
 /* -------------------- Actions -------------------- */
@@ -551,25 +676,17 @@ function runRawShell(commandText) {
 /* -------------------- UI helpers -------------------- */
 
 function setActionMode(mode) {
-    if (!["cpu", "gpu", "common"].includes(mode)) return;
+    if (!["all", "cpu", "gpu", "common"].includes(mode)) return;
 
     currentActionMode = mode;
     localStorage.setItem("actionMode", mode);
 
-    // Update UI
     document.querySelectorAll(".action-tab").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.mode === mode);
     });
 
-    // Optional status text
-    setActionOutput(
-        mode === "cpu" ? "Mode set: CPU" :
-        mode === "gpu" ? "Mode set: GPU" :
-                         "Mode set: BOTH"
-    );
+    setActionOutput(`Mode: ${mode.toUpperCase()}`);
 }
-
-
 
 function setActionOutput(text) {
     const el = document.getElementById("action-output");
@@ -578,50 +695,96 @@ function setActionOutput(text) {
     el.value = text;
 }
 
+function getActionsForMode() {
+    switch (currentActionMode) {
+        case "cpu":
+            return ["cpu"];
+
+        case "gpu":
+            return ["gpu"];
+
+        case "common":   // BOTH
+            return ["common"];
+
+        case "all":
+            return ["cpu", "gpu"];
+
+        default:
+            return [];
+    }
+}
+
 function actionStart() {
     const label =
-        currentActionMode === "cpu" ? "Start CPU miners" :
-        currentActionMode === "gpu" ? "Start GPU miners" :
-        "Start ALL miners";
+        currentActionMode === "cpu"    ? "Start CPU miners" :
+        currentActionMode === "gpu"    ? "Start GPU miners" :
+        currentActionMode === "common" ? "Start BOTH miners" :
+                                         "Start ALL miners";
 
     if (!confirmAction(label)) return;
-	
-	setActionOutput(label + "…");
 
-    if (currentActionMode === "cpu") cpuStart();
-    else if (currentActionMode === "gpu") gpuStart();
-    else commonStart();
+    setActionOutput(label + "…");
+
+    if (currentActionMode === "cpu") {
+        cpuStart();
+    } else if (currentActionMode === "gpu") {
+        gpuStart();
+    } else if (currentActionMode === "common") {
+        commonStart();          // ✅ single COMMON action
+    } else if (currentActionMode === "all") {
+        cpuStart();             // ✅ ALL = CPU + GPU
+        gpuStart();
+    }
 }
+
 
 function actionStop() {
     const label =
-        currentActionMode === "cpu" ? "Stop CPU miners" :
-        currentActionMode === "gpu" ? "Stop GPU miners" :
-        "Stop ALL miners";
+        currentActionMode === "cpu"    ? "Stop CPU miners" :
+        currentActionMode === "gpu"    ? "Stop GPU miners" :
+        currentActionMode === "common" ? "Stop BOTH miners" :
+                                         "Stop ALL miners";
 
     if (!confirmAction(label)) return;
-	
-	setActionOutput(label + "…");
 
-    if (currentActionMode === "cpu") cpuStop();
-    else if (currentActionMode === "gpu") gpuStop();
-    else commonStop();
+    setActionOutput(label + "…");
+
+    if (currentActionMode === "cpu") {
+        cpuStop();
+    } else if (currentActionMode === "gpu") {
+        gpuStop();
+    } else if (currentActionMode === "common") {
+        commonStop();
+    } else if (currentActionMode === "all") {
+        cpuStop();
+        gpuStop();
+    }
 }
+
 
 function actionRestart() {
     const label =
-        currentActionMode === "cpu" ? "Restart CPU miners" :
-        currentActionMode === "gpu" ? "Restart GPU miners" :
-        "Restart ALL miners";
+        currentActionMode === "cpu"    ? "Restart CPU miners" :
+        currentActionMode === "gpu"    ? "Restart GPU miners" :
+        currentActionMode === "common" ? "Restart BOTH miners" :
+                                         "Restart ALL miners";
 
     if (!confirmAction(label)) return;
-	
-	setActionOutput(label + "…");
 
-    if (currentActionMode === "cpu") cpuRestart();
-    else if (currentActionMode === "gpu") gpuRestart();
-    else commonRestart();
+    setActionOutput(label + "…");
+
+    if (currentActionMode === "cpu") {
+        cpuRestart();
+    } else if (currentActionMode === "gpu") {
+        gpuRestart();
+    } else if (currentActionMode === "common") {
+        commonRestart();
+    } else if (currentActionMode === "all") {
+        cpuRestart();
+        gpuRestart();
+    }
 }
+
 
 function updateSelectButton() {
     const btn = document.getElementById("btn-toggle-select");

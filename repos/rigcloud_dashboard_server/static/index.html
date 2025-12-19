@@ -29,8 +29,11 @@
 
     <!-- MODE SELECT -->
     <div class="action-modes">
-        <button class="action-tab active" data-mode="cpu" onclick="setActionMode('cpu')">CPU</button>
+        <button class="action-tab" data-mode="all" onclick="setActionMode('all')">ALL</button>
+		<span class="action-mode-sep"></span>
+		<button class="action-tab active" data-mode="cpu" onclick="setActionMode('cpu')">CPU</button>
         <button class="action-tab" data-mode="gpu" onclick="setActionMode('gpu')">GPU</button>
+		<span class="action-mode-sep"></span>
         <button class="action-tab" data-mode="common" onclick="setActionMode('common')">BOTH</button>
     </div>
 
@@ -53,6 +56,13 @@
             placeholder="Action output..."
             rows="1"
         ></textarea>
+    </div>
+
+    <!-- ACTION STATS (FAR RIGHT) -->
+    <div class="action-stats">
+        <span class="action-mode-sep"></span>
+		<span id="stat-gpu-watts">-- W</span>
+        <span id="stat-hashrate">--</span>
     </div>
 
 </div>
