@@ -10,8 +10,8 @@ Requires=docker.service
 [Service]
 User=root
 #Environment="OC_FILE=/home/user/rig-gpu.conf"
-ExecStartPre=/bin/chmod +x /usr/local/bin/docker_events_universal.sh
-ExecStart=/usr/local/bin/docker_events_universal.sh
+ExecStartPre=/bin/chmod +x /usr/local/bin/docker_events_gpu.sh
+ExecStart=/usr/local/bin/docker_events_gpu.sh
 #ExecStopPost=/usr/local/bin/gpu_reset_poststop.sh
 Restart=always
 RestartSec=2
@@ -33,9 +33,8 @@ Requires=docker.service
 [Service]
 User=root
 #Environment="OC_FILE=/home/user/rig-cpu.conf"
-ExecStartPre=/bin/chmod +x /usr/local/bin/docker_events_universal.sh
-ExecStart=/usr/local/bin/docker_events_universal.sh
-#ExecStopPost=/usr/local/bin/gpu_reset_poststop.sh
+ExecStartPre=/bin/chmod +x /usr/local/bin/docker_events_cpu.sh
+ExecStart=/usr/local/bin/docker_events_cpu.sh
 Restart=always
 RestartSec=2
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
