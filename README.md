@@ -39,7 +39,7 @@ on mining/AI rigs:
 - should see mqtt connected in logs
 
 aws advanced setup:
-- aws has its own free tier mqtt service, 500,000 per mounth limit
+- amazon web services has its own free tier mqtt service, in iot section
 - requires unique certificates on website backend and all the mining/AI rigs
 - duckdns or similar for connecting to your public ip
 - caddy handles certificates, routing
