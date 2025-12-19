@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <AWSProjectType>Lambda</AWSProjectType>
+    <RootNamespace>AlexaMediaSkillLambda</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Alexa.NET.SmartHome" Version="0.6.5" />
+    <PackageReference Include="AWSSDK.IotData" Version="3.7.1.34" />
+    <PackageReference Include="Amazon.Lambda.Core" Version="2.5.1" />
+    <PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.5.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+</Project>

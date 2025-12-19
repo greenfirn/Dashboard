@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Dict, Any, List
 
 import paho.mqtt.client as mqtt
+from paho.mqtt.client import CallbackAPIVersion
+
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,7 +33,7 @@ if MQTT_MODE == "local":
     MQTT_BROKER = os.getenv("MQTT_HOST", "127.0.0.1")
     MQTT_PORT   = int(os.getenv("MQTT_PORT", "1883"))
     MQTT_USER   = os.getenv("MQTT_USER", "admin")
-    MQTT_PASS   = os.getenv("MQTT_PASS", "")
+    MQTT_PASS   = os.getenv("MQTT_PASS", "YLdre4ICRaqecEPr@so4a16azefumo")
 
     MQTT_CERT = None
     MQTT_KEY  = None
@@ -42,7 +44,7 @@ elif MQTT_MODE == "pi":
     MQTT_BROKER = os.getenv("MQTT_HOST", "mosquitto")
     MQTT_PORT   = int(os.getenv("MQTT_PORT", "1883"))
     MQTT_USER   = os.getenv("MQTT_USER", "admin")
-    MQTT_PASS   = os.getenv("MQTT_PASS", "")
+    MQTT_PASS   = os.getenv("MQTT_PASS", "YLdre4ICRaqecEPr@so4a16azefumo")
 
     MQTT_CERT = None
     MQTT_KEY  = None
@@ -438,13 +440,13 @@ app.mount(
 # ================================================================
 # MQTT CALLBACKS
 # ================================================================
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
+def on_connect(client, userdata, flags, reason_code, properties):
+    if reason_code == 0:
         log(f"[MQTT] Connected to {MQTT_BROKER}:{MQTT_PORT}")
         client.subscribe(MQTT_TOPIC_FILTER, qos=0)
         log(f"[MQTT] Subscribed to {MQTT_TOPIC_FILTER}")
     else:
-        log(f"[MQTT] Connect failed with rc={rc}")
+        log(f"[MQTT] Connect failed with reason_code={reason_code}")
 
 def on_message(client, userdata, msg):
     try:
@@ -555,7 +557,8 @@ def mqtt_thread_main():
 
     mqtt_client = mqtt.Client(
         client_id=f"rigcloud-dashboard-{os.getpid()}",
-        protocol=mqtt.MQTTv311
+        protocol=mqtt.MQTTv311,
+        callback_api_version=CallbackAPIVersion.VERSION2
     )
 
     if MQTT_MODE == "local" or MQTT_MODE == "pi":
