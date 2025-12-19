@@ -21,7 +21,7 @@ html Dashboard for ubuntu server rigs...
 
 windows setup:
 - install python on whatever pc you want to use as website backend see python-setup.txt
-- load rigcloud_dashboard_server.py add any modules it needs, can use visual studio community
+- load rigcloud_dashboard_server.py, I use visual studio community for developement
 - install x64 version of mqtt broker from https://mosquitto.org/download/
 - the windows service option doesnt work for this purpose
 - modify the mqtt conf file in 'C:\Program Files\mosquitto' see mosquitto.conf
