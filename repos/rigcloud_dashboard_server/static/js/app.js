@@ -265,8 +265,8 @@ function updateActionStats() {
     /* ---------------- Render GPU watts ---------------- */
     wattsEl.textContent =
         totalWatts > 0
-            ? `GPU totals: ${Math.round(totalWatts)} W`
-            : "GPU totals: -- W";
+            ? `GPU total: ${Math.round(totalWatts)} W`
+            : "GPU total: -- W";
 
     /* ---------------- Render miner totals ---------------- */
     const minerParts = [];
