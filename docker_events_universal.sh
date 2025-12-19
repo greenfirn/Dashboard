@@ -1,6 +1,6 @@
 # -- write docker_events_universal script --
 
-sudo tee /usr/local/bin/docker_events_universal.sh > /dev/null <<'EOF'
+sudo tee /usr/local/bin/docker_events_gpu.sh > /dev/null <<'EOF'
 #!/bin/bash
 
 set -euo pipefail
@@ -149,8 +149,10 @@ while read -r type action name image; do
 done
 EOF
 
+#========================================================================================================
+
 # -- gpu_reset not needed for clore when using oc profiles --
-# -- leave commented out in services --
+# -- leave commented out in service --
 
 sudo tee /usr/local/bin/gpu_reset_poststop.sh > /dev/null <<'EOF'
 #!/bin/bash
