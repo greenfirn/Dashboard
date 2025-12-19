@@ -1,5 +1,7 @@
 html Dashboard for ubuntu server rigs...
 
+- fixed 'version 1 is deprecated'
+
 - click a row shows more details about docker containers running etc
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
 - see install-services.sh and docker_events_universal.sh
@@ -50,7 +52,7 @@ server start, client connect, disconnect...
 
 ![Dashboard connect](Screenshot-client-connect-disconnect.png)
 
-- created a server client mqtt setup before with c# for a Alexa app that could send controls to my local PC
+- created a server client mqtt setup before in c# for a Alexa app that could send controls to my local PC
 - already familiar with the general setup, python is new to me though
 
 developed with assistance from ChatGPT.
