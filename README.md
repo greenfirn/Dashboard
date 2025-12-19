@@ -12,8 +12,6 @@ html Dashboard for ubuntu server rigs...
 
 ![Dashboard Screenshot](Screenshot.png)
 
-![Dashboard Screenshot-popout](Screenshot-popout.png)
-
 ** most recent files in repos **
 - xmrig,bzminer,rigel hashrates
 - srbminer configured, not confirmed working
