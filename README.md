@@ -2,7 +2,7 @@ html Dashboard for ubuntu server rigs...
 
 - click a row shows more details about docker containers running etc
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
-- see 'install - services.sh' and 'docker_events_universal.sh'
+- see 'install-services.sh' and 'docker_events_universal.sh'
 - custom commands with reply, install miners, create files with tee echo etc
 - index.html serves dashboard, customise colors etc
 - CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service, Miner, Containers running
@@ -16,7 +16,7 @@ html Dashboard for ubuntu server rigs...
 - srbminer configured, not confirmed working
 - api settings need to be in cmd line,
 - bzminer works by default
-- see api bind settings.txt
+- see api-settings.txt
 - 'Both' is meant to start, stop, restart a 3rd CPU and GPU service
 
 windows setup:
