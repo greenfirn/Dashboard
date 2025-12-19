@@ -40,7 +40,7 @@ aws advanced setup:
 - duckdns or similar for connecting to your public ip
 - caddy handles certificates, routing
 
-- browser connect, disconnect...
+browser connect, disconnect...
 
 ![Dashboard connect](Screenshot-client-connect-disconnect.png)
 
