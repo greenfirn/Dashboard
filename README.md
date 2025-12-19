@@ -2,7 +2,7 @@ html Dashboard for ubuntu server rigs...
 
 - click a row shows more details about docker containers running etc
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
-- see 'install-services.sh' and 'docker_events_universal.sh'
+- see install-services.sh and docker_events_universal.sh
 - custom commands with reply, install miners, create files with tee echo etc
 - index.html serves dashboard, customise colors etc
 - CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service, Miner, Containers running
@@ -29,7 +29,7 @@ windows setup:
 - set mode to local near top of rigcloud_dashboard_server.py will run mqtt on start hidden
 
 on mining/AI rigs:
-- agent setup.txt has details about prerequisites
+- agent-setup.txt has details about prerequisites
 - write rigcloud_agent.py, rigcloud_telemetry.py, rigcloud_cmd.sh, 
 - and rigcloud-agent.conf with your login for mqtt
 - create service with rigcloud_agent-service.sh
