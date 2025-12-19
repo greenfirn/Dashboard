@@ -1,3 +1,4 @@
+sudo tee /usr/local/bin/rigcloud_agent.py > /dev/null <<'EOF'
 #!/usr/bin/env python3
 import rigcloud_telemetry as telemetry
 import asyncio
@@ -265,3 +266,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+EOF

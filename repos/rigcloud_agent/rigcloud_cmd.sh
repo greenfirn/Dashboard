@@ -1,3 +1,4 @@
+sudo tee /home/user/rigcloud_cmd.sh > /dev/null <<'EOF'
 #!/bin/bash
 # All commands dispatched from MQTT come through this script.
 #
@@ -134,3 +135,4 @@ case "$CMD" in
         bash -c "$RAW_CMD"
         ;;
 esac
+EOF

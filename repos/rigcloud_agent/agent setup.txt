@@ -1,33 +1,18 @@
-
-sudo systemctl stop rigcloud-agent.service
+ubuntu:
 
 sudo apt update
 sudo apt install -y python3 python3-pip jq ca-certificates curl
 sudo python3 -m pip install aiomqtt typing_extensions paho-mqtt --break-system-packages
 
-#sudo pip install psutil --break-system-packages
+
 
 hiveos:
 sudo apt update
 sudo apt install -y python3-pip
 sudo pip3 install aiomqtt typing_extensions paho-mqtt
 
-sudo tee /etc/systemd/system/rigcloud-agent.service > /dev/null <<'EOF'
-[Unit]
-Description=RigCloud MQTT Agent
-After=network-online.target
-Wants=network-online.target
 
-[Service]
-Type=simple
-ExecStart=/usr/bin/python3 /usr/local/bin/rigcloud_agent.py
-Restart=always
-RestartSec=5
-User=root
-
-[Install]
-WantedBy=multi-user.target
-EOF
+aws:
 
 sudo mkdir -p /etc/rigcloud
 
