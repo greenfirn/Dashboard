@@ -36,6 +36,9 @@ on mining/AI rigs:
 - create service with rigcloud_agent-service.sh
 - should see mqtt connected in logs
 
+raspberry pi:
+- some notes, config files in raspberry pi - docker
+
 aws advanced setup:
 - amazon web services has its own free tier mqtt service, in iot section
 - requires unique certificates on website backend and all the mining/AI rigs
