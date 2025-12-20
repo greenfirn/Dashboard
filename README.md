@@ -1,6 +1,6 @@
 html Dashboard for ubuntu server rigs...
 
-- fixed 'version 1 is deprecated', srbminer hashrates working
+- fixed 'version 1 is deprecated', srbminer hashrates now working
 
 - click a row shows more details about docker containers running etc
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
