@@ -1,3 +1,4 @@
+* windows service doesnt work for me when changing to user/pass mode
 
 cd C:\Program Files\mosquitto\
 
