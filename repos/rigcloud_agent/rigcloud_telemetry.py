@@ -530,7 +530,52 @@ def collect_lolminer_stats():
         "rejected": rejected
     }
 
+def collect_onezerominer_stats():
+    host = os.environ.get("ONEZEROMINER_API_HOST", "127.0.0.1")
+    port = int(os.environ.get("ONEZEROMINER_API_PORT", "3001"))
+    url = f"http://{host}:{port}"
 
+    try:
+        with urllib.request.urlopen(url, timeout=1.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        return {"status": "offline", "error": str(e)}
+
+    # -------------------------------
+    # Uptime
+    # -------------------------------
+    uptime_s = data.get("uptime_seconds")
+
+    algos = data.get("algos", [])
+    if not algos:
+        return {"status": "ok", "note": "no algorithms"}
+
+    a0 = algos[0]
+
+    # -------------------------------
+    # Algorithm
+    # -------------------------------
+    algo = a0.get("name")
+
+    # -------------------------------
+    # Hashrate (H/s)
+    # -------------------------------
+    total_hs = a0.get("total_hashrate")
+
+    # -------------------------------
+    # Shares
+    # -------------------------------
+    accepted = a0.get("total_accepted_shares")
+    rejected = a0.get("total_rejected_shares")
+
+    return {
+        "status": "ok",
+        "algo": algo,
+        "uptime_s": uptime_s,
+        "total_hs": total_hs,
+        "accepted": accepted,
+        "rejected": rejected
+    }
 
 def collect_xmrig_stats():
     host = os.environ.get("XMRIG_HTTP_HOST", "127.0.0.1")
@@ -580,6 +625,7 @@ def collect_full_stats():
         "miner_lolminer": collect_lolminer_stats(),
         "miner_srbminer": collect_srbminer_stats(),
         "miner_wildrig": collect_wildrig_stats(),
+        "miner_onezerominer": collect_onezerominer_stats(),
         "miner_xmrig": collect_xmrig_stats(),
         "docker": collect_docker_containers(),
         "cpu_service": collect_service_uptime("docker_events_cpu.service"),
