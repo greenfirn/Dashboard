@@ -36,7 +36,8 @@ on mining/AI rigs:
 - create service with rigcloud_agent-service.sh
 - should see mqtt connected in logs
 
-raspberry pi - mqtt, website host/backend
+raspberry pi:
+- mqtt, website host/backend
 - some notes, config files in raspberry pi - docker
 
 aws advanced setup:
