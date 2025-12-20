@@ -1,6 +1,6 @@
 html Dashboard for ubuntu server rigs...
 
-- fixed 'version 1 is deprecated'
+- fixed 'version 1 is deprecated', srbminer hashrates now working
 
 - click a row shows more details about docker containers running etc
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
@@ -13,12 +13,12 @@ html Dashboard for ubuntu server rigs...
 ![Dashboard Screenshot](Screenshot.png)
 
 ** most recent files in repos **
-- xmrig,bzminer,rigel hashrates
-- srbminer configured, not confirmed working
+- xmrig,bzminer,rigel,srbminer hashrates
 - api settings need to be in cmd line,
 - bzminer works by default
 - see api-settings.txt
-- 'Both' is meant to start, stop, restart a 3rd CPU and GPU service
+- in rigcloud_cmd.sh 'Both' is meant to start, stop, restart
+- a 3rd CPU and GPU service but not using it
 
 windows setup:
 - install python on whatever pc you want to use as website host/backend see python-setup.txt
