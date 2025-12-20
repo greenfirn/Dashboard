@@ -350,57 +350,84 @@ def collect_srbminer_stats():
     url = f"http://{host}:{port}"
 
     try:
-        req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, timeout=1.0) as resp:
+        with urllib.request.urlopen(url, timeout=1.0) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except Exception as e:
-        return {"status": "offline", "error": str(e)}
+        return {
+            "status": "offline",
+            "error": str(e)
+        }
+
+    algos = data.get("algorithms", [])
+    if not algos:
+        return {
+            "status": "ok",
+            "note": "no algorithms running"
+        }
+
+    a0 = algos[0]
 
     # -------------------------------
-    # Safe field extraction
+    # Hashrates
+    # -------------------------------
+    hr = a0.get("hashrate", {})
+
+    cpu_block = hr.get("cpu", {}) if isinstance(hr, dict) else {}
+    gpu_block = hr.get("gpu", {}) if isinstance(hr, dict) else {}
+
+    cpu_hs = cpu_block.get("total")
+    gpu_hs = gpu_block.get("total")
+
+    # Compute combined total only when values exist
+    total_hs = 0.0
+    if isinstance(cpu_hs, (int, float)):
+        total_hs += cpu_hs
+    if isinstance(gpu_hs, (int, float)):
+        total_hs += gpu_hs
+
+    # -------------------------------
+    # Shares
+    # -------------------------------
+    shares = a0.get("shares", {})
+    accepted = shares.get("accepted")
+    rejected = shares.get("rejected")
+
+    # -------------------------------
+    # Workers
+    # -------------------------------
+    cpu_workers = data.get("total_cpu_workers")
+    gpu_workers = data.get("total_gpu_workers")
+
+    # -------------------------------
+    # Uptime
     # -------------------------------
     uptime_s = (
-        data.get("uptime")
+        data.get("mining_time")
+        or data.get("uptime")
         or data.get("uptime_s")
-        or data.get("session", {}).get("uptime")
-    )
-
-    algo = (
-        data.get("algorithm")
-        or data.get("algo")
-        or data.get("session", {}).get("algorithm")
-    )
-
-    # Total hashrate (H/s)
-    total_hs = None
-    hr = data.get("hashrate") or data.get("hashrates")
-
-    if isinstance(hr, dict):
-        total_hs = (
-            hr.get("total")
-            or hr.get("total_hashrate")
-            or hr.get("hashrate")
-        )
-
-    # Shares
-    accepted = (
-        data.get("accepted")
-        or data.get("shares", {}).get("accepted")
-    )
-
-    rejected = (
-        data.get("rejected")
-        or data.get("shares", {}).get("rejected")
     )
 
     return {
         "status": "ok",
-        "algo": algo,
+        "miner": "srbminer",
+        "algo": a0.get("name"),
         "uptime_s": uptime_s,
-        "total_hs": total_hs,
+
+        # Workers
+        "cpu_workers": cpu_workers,
+        "gpu_workers": gpu_workers,
+
+        # Hashrates (H/s)
+        "cpu_hs": cpu_hs,
+        "gpu_hs": gpu_hs,
+        "total_hs": total_hs if total_hs > 0 else None,
+
+        # Shares
         "accepted": accepted,
-        "rejected": rejected
+        "rejected": rejected,
     }
+
+
 
 def collect_xmrig_stats():
     host = os.environ.get("XMRIG_HTTP_HOST", "127.0.0.1")
