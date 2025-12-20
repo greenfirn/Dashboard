@@ -9,7 +9,7 @@ html Dashboard for ubuntu server rigs...
 - custom commands with reply, install miners, create files with tee echo etc
 - index.html serves dashboard, customise colors etc in .css file
 - working on more capabilities, design is just what chatgpt suggested for dark theme
-- CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service, Miner, Containers running
+- CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service, Containers running, Miners
 
 ![Dashboard Screenshot](Screenshot.png)
 
@@ -36,6 +36,10 @@ on mining/AI rigs:
 - create service with rigcloud_agent-service.sh
 - should see mqtt connected in logs
 
+raspberry pi:
+- mqtt, website host/backend
+- some notes, config files in raspberry pi - docker
+
 aws advanced setup:
 - amazon web services has its own free tier mqtt service, in iot section
 - requires unique certificates on website backend and all the mining/AI rigs
@@ -44,6 +48,8 @@ aws advanced setup:
 - running server.py on aws lambda might be possible havnt looked into it yet
 
 server start, client connect, disconnect...
+- rig names are preserved on browser restarts
+- stats are collected on rigs only when webpage is active
 
 ![Dashboard connect](Screenshot-client-connect-disconnect.png)
 
