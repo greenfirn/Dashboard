@@ -47,7 +47,9 @@ aws advanced setup:
 - caddy handles certificates, routing
 - running server.py on aws lambda might be possible havnt looked into it yet
 
-server start, client connect, disconnect... rig names are preserved on browser restarts
+server start, client connect, disconnect...
+- rig names are preserved on browser restarts
+- stats are collected on rigs only when webpage is active
 
 ![Dashboard connect](Screenshot-client-connect-disconnect.png)
 
