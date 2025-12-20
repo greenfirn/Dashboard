@@ -55,7 +55,6 @@ function fmtXmrig(hs) {
         : null;
 }
 
-
 /* -------------------- Uptime Formatter -------------------- */
 function fmtUptime(sec) {
     if (!sec || sec <= 0) return "--";
@@ -177,8 +176,6 @@ function toggleSelectAll() {
         if (currentActionMode === "gpu") {
             return gpuActive;
         }
-		
-		if (currentActionMode === "common") return true;
     });
 
     if (eligible.length === 0) return;
@@ -265,8 +262,8 @@ function updateActionStats() {
     /* ---------------- Render GPU watts ---------------- */
     wattsEl.textContent =
         totalWatts > 0
-            ? `GPU total: ${Math.round(totalWatts)} W`
-            : "GPU total: -- W";
+            ? `GPU W: ${Math.round(totalWatts)}`
+            : "GPU W: --";
 
     /* ---------------- Render miner totals ---------------- */
     const minerParts = [];
@@ -325,7 +322,7 @@ function render() {
         /* ---------------- RAM ---------------- */
         let ramStr = "--";
         if (d.memory?.total_mb && d.memory.used_mb !== undefined) {
-            ramStr = `${(d.memory.used_mb / 1024).toFixed(1)} / ${(d.memory.total_mb / 1024).toFixed(1)} GB`;
+            ramStr = `${(d.memory.used_mb / 1024).toFixed(1)} / ${(d.memory.total_mb / 1024).toFixed(1)}`;
         }
 
         /* ---------------- GPU ---------------- */
@@ -347,7 +344,7 @@ function render() {
 
         let vramGB = "--";
         if (gpu.vram_used !== undefined && gpu.vram_total !== undefined) {
-            vramGB = `${(gpu.vram_used / 1024).toFixed(1)} / ${(gpu.vram_total / 1024).toFixed(1)} GB`;
+            vramGB = `${(gpu.vram_used / 1024).toFixed(1)} / ${(gpu.vram_total / 1024).toFixed(1)}`;
         }
 
         let fanClass = "status-good";
@@ -526,21 +523,21 @@ function render() {
         main.appendChild(nameEl);
 
         main.insertAdjacentHTML("beforeend", `
-            <div class="metric"><span class="${cpuTempClass}">${cpuTempStr}°C</span></div>
-            <div class="metric">${cpuUtil}%</div>
+            <div class="metric"><span class="${cpuTempClass}">${cpuTempStr}</span></div>
+            <div class="metric">${cpuUtil}</div>
             <div class="metric">${load1} / ${load5} / ${load15}</div>
             <div class="metric">${ramStr}</div>
-            <div class="metric"><span class="${gpuTempClass}">${gpuTempStr}°C</span></div>
-            <div class="metric">${gpuUtil}%</div>
-            <div class="metric">${gpuPower}W</div>
-            <div class="metric"><span class="${fanClass}">${gpuFan}%</span></div>
+            <div class="metric"><span class="${gpuTempClass}">${gpuTempStr}</span></div>
+            <div class="metric">${gpuUtil}</div>
+            <div class="metric">${gpuPower}</div>
+            <div class="metric"><span class="${fanClass}">${gpuFan}</span></div>
             <div class="metric">${vramGB}</div>
-            <div class="metric">${coreMHz} MHz</div>
-            <div class="metric">${memMHz} MHz</div>
+            <div class="metric">${coreMHz}</div>
+            <div class="metric">${memMHz}</div>
             <div class="metric"><span class="${cpuServiceClass}">CPU</span></div>
             <div class="metric"><span class="${gpuServiceClass}">GPU</span></div>
-            <div class="metric metric-left">${minerSummary}</div>
             <div class="metric">${dockerList.length}</div>
+            <div class="metric metric-left">${minerSummary}</div>
         `);
 
         row.appendChild(main);
@@ -552,11 +549,25 @@ function render() {
         pop.style.display = open ? "flex" : "none";
 
         pop.addEventListener("click", ev => ev.stopPropagation());
+		pop.innerHTML = `
+    <div class="pop-content">
+        <div class="pop-left"></div>
 
-        pop.innerHTML = `
-            <div class="pop-left">${dockerLeft}</div>
-            <div class="pop-right">${minerRight}</div>
-        `;
+        <div class="pop-right">
+            <div class="pop-row">
+                <div class="pop-section pop-docker">
+                    ${dockerLeft}
+                </div>
+
+                <div class="pop-section pop-miners">
+                    ${minerRight}
+                </div>
+            </div>
+        </div>
+    </div>
+`;
+
+
 
         row.appendChild(pop);
         container.appendChild(row);
@@ -639,28 +650,12 @@ function cpuRestart() {
     sendCommandToSelectedRigs("cpu.restart");
 }
 
-function commonStart() {
-    sendCommandToSelectedRigs("common.start");
-}
-
-function commonStop() {
-    sendCommandToSelectedRigs("common.stop");
-}
-
-function commonRestart() {
-    sendCommandToSelectedRigs("common.restart");
-}
-
 function setModeCPU() {
     sendCommandToSelectedRigs("mode.set CPU");
 }
 
 function setModeGPU() {
     sendCommandToSelectedRigs("mode.set GPU");
-}
-
-function setModeCommon() {
-    sendCommandToSelectedRigs("mode.set COMMON");
 }
 
 function rebootSystem() {
@@ -676,7 +671,7 @@ function runRawShell(commandText) {
 /* -------------------- UI helpers -------------------- */
 
 function setActionMode(mode) {
-    if (!["all", "cpu", "gpu", "common"].includes(mode)) return;
+    if (!["all", "cpu", "gpu"].includes(mode)) return;
 
     currentActionMode = mode;
     localStorage.setItem("actionMode", mode);
@@ -703,9 +698,6 @@ function getActionsForMode() {
         case "gpu":
             return ["gpu"];
 
-        case "common":   // BOTH
-            return ["common"];
-
         case "all":
             return ["cpu", "gpu"];
 
@@ -718,7 +710,6 @@ function actionStart() {
     const label =
         currentActionMode === "cpu"    ? "Start CPU miners" :
         currentActionMode === "gpu"    ? "Start GPU miners" :
-        currentActionMode === "common" ? "Start BOTH miners" :
                                          "Start ALL miners";
 
     if (!confirmAction(label)) return;
@@ -729,8 +720,6 @@ function actionStart() {
         cpuStart();
     } else if (currentActionMode === "gpu") {
         gpuStart();
-    } else if (currentActionMode === "common") {
-        commonStart();          // ✅ single COMMON action
     } else if (currentActionMode === "all") {
         cpuStart();             // ✅ ALL = CPU + GPU
         gpuStart();
@@ -742,7 +731,6 @@ function actionStop() {
     const label =
         currentActionMode === "cpu"    ? "Stop CPU miners" :
         currentActionMode === "gpu"    ? "Stop GPU miners" :
-        currentActionMode === "common" ? "Stop BOTH miners" :
                                          "Stop ALL miners";
 
     if (!confirmAction(label)) return;
@@ -753,8 +741,6 @@ function actionStop() {
         cpuStop();
     } else if (currentActionMode === "gpu") {
         gpuStop();
-    } else if (currentActionMode === "common") {
-        commonStop();
     } else if (currentActionMode === "all") {
         cpuStop();
         gpuStop();
@@ -766,7 +752,6 @@ function actionRestart() {
     const label =
         currentActionMode === "cpu"    ? "Restart CPU miners" :
         currentActionMode === "gpu"    ? "Restart GPU miners" :
-        currentActionMode === "common" ? "Restart BOTH miners" :
                                          "Restart ALL miners";
 
     if (!confirmAction(label)) return;
@@ -777,8 +762,6 @@ function actionRestart() {
         cpuRestart();
     } else if (currentActionMode === "gpu") {
         gpuRestart();
-    } else if (currentActionMode === "common") {
-        commonRestart();
     } else if (currentActionMode === "all") {
         cpuRestart();
         gpuRestart();

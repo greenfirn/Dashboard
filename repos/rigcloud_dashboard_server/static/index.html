@@ -22,7 +22,7 @@
         <button
             class="action-btn"
             id="btn-toggle-select"
-            title="Select / Unselect all">
+            title="Select / Unselect">
             ✕
         </button>
     </div>
@@ -32,8 +32,6 @@
 		<button class="action-tab" data-mode="all" onclick="setActionMode('all')">ALL</button>
 		<button class="action-tab active" data-mode="cpu" onclick="setActionMode('cpu')">CPU</button>
         <button class="action-tab" data-mode="gpu" onclick="setActionMode('gpu')">GPU</button>
-		<span class="action-mode-sep"></span>
-        <button class="action-tab" data-mode="common" onclick="setActionMode('common')">BOTH</button>
     </div>
 
     <!-- ACTION BUTTONS -->
@@ -45,7 +43,6 @@
 
     <!-- FLEX SPACER -->
     <div class="action-spacer"></div>
-
     <!-- ACTION STATUS OUTPUT -->
     <div class="action-status">
         <textarea
@@ -59,8 +56,7 @@
 
     <!-- ACTION STATS (FAR RIGHT) -->
     <div class="action-stats">
-        <span class="action-mode-sep"></span>
-		<span id="stat-gpu-watts">-- W</span>
+		<span id="stat-gpu-watts">--</span>
         <span id="stat-hashrate">--</span>
     </div>
 
@@ -107,15 +103,15 @@ nvidia-smi
         <div class="header-item metric">RAM</div>
         <div class="header-item metric">GPU °C</div>
         <div class="header-item metric">GPU %</div>
-        <div class="header-item metric">Watts</div>
+        <div class="header-item metric">GPU W</div>
         <div class="header-item metric">Fan</div>
         <div class="header-item metric">VRAM</div>
         <div class="header-item metric">Core</div>
         <div class="header-item metric">Mem</div>
         <div class="header-item metric">CPU</div>
         <div class="header-item metric">GPU</div>
-        <div class="header-item title-left">Miner</div>
         <div class="header-item metric">D</div>
+        <div class="header-item title-left">Miner</div>
     </div>
 </div>
 <div id="rig-container"></div>
