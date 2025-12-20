@@ -208,6 +208,7 @@ function updateActionStats() {
         bzminer: 0,
         xmrig: 0,
         rigel: 0,
+		lolminer: 0,
         srb_gpu: 0,
         srb_cpu: 0
     };
@@ -254,6 +255,11 @@ function updateActionStats() {
             minerTotals.rigel += d.miner_rigel.total_hs;
         }
 
+		// lolMiner
+        if (typeof d.miner_lolminer?.total_hs === "number") {
+            minerTotals.lolminer += d.miner_lolminer.total_hs;
+        }
+
         // SRBMiner (split)
         if (typeof d.miner_srbminer?.gpu_hs === "number") {
             minerTotals.srb_gpu += d.miner_srbminer.gpu_hs;
@@ -281,7 +287,9 @@ function updateActionStats() {
     if (minerTotals.rigel > 0) {
         minerParts.push(`Rigel ${fmtRateHs(minerTotals.rigel, "")}`);
     }
-
+	if (minerTotals.lolminer > 0) {
+        minerParts.push(`lolMiner ${fmtRateHs(minerTotals.lolminer, "")}`);
+    }
     if (minerTotals.srb_gpu > 0 || minerTotals.srb_cpu > 0) {
         const parts = [];
 
@@ -391,6 +399,7 @@ function render() {
         const srb = d.miner_srbminer;
         const bz  = d.miner_bzminer;
         const xm  = d.miner_xmrig;
+		const lm  = d.miner_lolminer;
 
         let minerRight = "";
 
@@ -443,6 +452,19 @@ function render() {
                 </div>`;
         }
 
+        /* ----- lolMiner ----- */
+        if (lm && hasPositiveRate(lm.total_hs)) {
+            const rate = fmtRateHs(lm.total_hs, "");
+
+            minerRight += `
+                <div class="miner-row">
+                    <b>lolMiner</b> — ${rate}
+                    <span style="float:right;color:#aaa">
+                        ${fmtUptime(lm.uptime_s)}
+                    </span>
+                </div>`;
+        }
+
         /* ----- SRBMiner ----- */
         if (srb) {
                 let parts = [];
@@ -490,6 +512,10 @@ function render() {
 
             rg?.total_hs > 0
                 ? fmtRateHs(rg.total_hs, "Rigel")
+                : null,
+
+            lm?.total_hs > 0
+                ? fmtRateHs(lm.total_hs, "lolMiner")
                 : null,
 
             srb

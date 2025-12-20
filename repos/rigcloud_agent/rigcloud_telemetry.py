@@ -427,6 +427,58 @@ def collect_srbminer_stats():
         "rejected": rejected,
     }
 
+def collect_lolminer_stats():
+    host = os.environ.get("LOLMINER_API_HOST", "127.0.0.1")
+    port = int(os.environ.get("LOLMINER_API_PORT", "8020"))
+    url = f"http://{host}:{port}/summary"
+
+    try:
+        with urllib.request.urlopen(url, timeout=1.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        return {"status": "offline", "error": str(e)}
+
+    # -------------------------------
+    # Uptime
+    # -------------------------------
+    uptime_s = data.get("Session", {}).get("Uptime")
+
+    algos = data.get("Algorithms", [])
+    if not algos:
+        return {"status": "ok", "note": "no algorithms"}
+
+    a0 = algos[0]
+
+    # -------------------------------
+    # Algorithm
+    # -------------------------------
+    algo = a0.get("Algorithm")
+
+    # -------------------------------
+    # Hashrate (convert to H/s)
+    # -------------------------------
+    total_perf = a0.get("Total_Performance")
+    factor = a0.get("Performance_Factor", 1)
+
+    total_hs = None
+    if isinstance(total_perf, (int, float)):
+        total_hs = total_perf * factor
+
+    # -------------------------------
+    # Shares
+    # -------------------------------
+    accepted = a0.get("Total_Accepted")
+    rejected = a0.get("Total_Rejected")
+
+    return {
+        "status": "ok",
+        "algo": algo,
+        "uptime_s": uptime_s,
+        "total_hs": total_hs,
+        "accepted": accepted,
+        "rejected": rejected
+    }
+
 
 
 def collect_xmrig_stats():
@@ -470,10 +522,11 @@ def collect_full_stats():
         "cpu_usage": collect_cpu_usage(),
         "load": collect_load(),
         "memory": collect_memory(),
-                "gpu_present": gpu_present,
+        "gpu_present": gpu_present,
         "gpus": collect_gpu_stats() if gpu_present else [],
         "miner_rigel": collect_rigel_stats(),
         "miner_bzminer": collect_bzminer_stats(),
+        "miner_lolminer": collect_lolminer_stats(),
         "miner_srbminer": collect_srbminer_stats(),
         "miner_xmrig": collect_xmrig_stats(),
         "docker": collect_docker_containers(),
