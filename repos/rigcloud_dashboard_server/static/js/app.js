@@ -203,12 +203,13 @@ function updateActionStats() {
 
     let totalWatts = 0;
 
-    // Per-miner totals (HS)
+    // Per-miner totals (H/s)
     const minerTotals = {
         bzminer: 0,
         xmrig: 0,
         rigel: 0,
-        srbminer: 0
+        srb_gpu: 0,
+        srb_cpu: 0
     };
 
     // Scope:
@@ -234,7 +235,7 @@ function updateActionStats() {
 
         /* ---------------- Miners ---------------- */
 
-        // BzMiner (HS or MHS fallback)
+        // BzMiner
         if (d.miner_bzminer) {
             if (typeof d.miner_bzminer.total_hs === "number") {
                 minerTotals.bzminer += d.miner_bzminer.total_hs;
@@ -253,9 +254,12 @@ function updateActionStats() {
             minerTotals.rigel += d.miner_rigel.total_hs;
         }
 
-        // SRBMiner
-        if (typeof d.miner_srbminer?.total_hs === "number") {
-            minerTotals.srbminer += d.miner_srbminer.total_hs;
+        // SRBMiner (split)
+        if (typeof d.miner_srbminer?.gpu_hs === "number") {
+            minerTotals.srb_gpu += d.miner_srbminer.gpu_hs;
+        }
+        if (typeof d.miner_srbminer?.cpu_hs === "number") {
+            minerTotals.srb_cpu += d.miner_srbminer.cpu_hs;
         }
     });
 
@@ -277,8 +281,18 @@ function updateActionStats() {
     if (minerTotals.rigel > 0) {
         minerParts.push(`Rigel ${fmtRateHs(minerTotals.rigel, "")}`);
     }
-    if (minerTotals.srbminer > 0) {
-        minerParts.push(`SRBMiner ${fmtRateHs(minerTotals.srbminer, "")}`);
+
+    if (minerTotals.srb_gpu > 0 || minerTotals.srb_cpu > 0) {
+        const parts = [];
+
+        if (minerTotals.srb_gpu > 0) {
+            parts.push(`GPU ${fmtRateHs(minerTotals.srb_gpu, "")}`);
+        }
+        if (minerTotals.srb_cpu > 0) {
+            parts.push(`CPU ${fmtRateHs(minerTotals.srb_cpu, "")}`);
+        }
+
+        minerParts.push(`SRBMiner ${parts.join(" | ")}`);
     }
 
     hashEl.textContent =
@@ -286,6 +300,7 @@ function updateActionStats() {
             ? minerParts.join(" | ")
             : "--";
 }
+
 
 /* -------------------- Render -------------------- */
 function render() {
@@ -429,17 +444,28 @@ function render() {
         }
 
         /* ----- SRBMiner ----- */
-        if (srb && hasPositiveRate(srb.total_hs)) {
-            const rate = fmtRateHs(srb.total_hs, "");
+        if (srb) {
+                let parts = [];
 
-            minerRight += `
+                if (hasPositiveRate(srb.gpu_hs)) {
+                        parts.push(`GPU ${fmtRateHs(srb.gpu_hs, "")}`);
+                }
+
+                if (hasPositiveRate(srb.cpu_hs)) {
+                        parts.push(`CPU ${fmtRateHs(srb.cpu_hs, "")}`);
+                }
+
+                if (parts.length > 0) {
+                        minerRight += `
                 <div class="miner-row">
-                    <b>SRBMiner</b> — ${rate}
-                    <span style="float:right;color:#aaa">
-                        ${fmtUptime(srb.uptime_s)}
-                    </span>
+                        <b>SRBMiner</b> — ${parts.join(" | ")}
+                        <span style="float:right;color:#aaa">
+                                ${fmtUptime(srb.uptime_s)}
+                        </span>
                 </div>`;
+                }
         }
+
 
         /* ----- Header only if something rendered ----- */
         if (minerRight !== "") {
@@ -466,8 +492,18 @@ function render() {
                 ? fmtRateHs(rg.total_hs, "Rigel")
                 : null,
 
-            srb?.total_hs > 0
-                ? fmtRateHs(srb.total_hs, "SRBMiner")
+            srb
+                ? [
+                        hasPositiveRate(srb.gpu_hs)
+                            ? `GPU ${fmtRateHs(srb.gpu_hs, "")} SRBMiner`
+                            : null,
+
+                        hasPositiveRate(srb.cpu_hs)
+                            ? `CPU ${fmtRateHs(srb.cpu_hs, "")} SRBMiner`
+                            : null
+                  ]
+                        .filter(Boolean)
+                        .join(" | ")
                 : null
         ]
             .filter(Boolean)
