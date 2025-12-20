@@ -14,7 +14,7 @@ html Dashboard for ubuntu server rigs...
 ![Dashboard Screenshot](Screenshot.png)
 
 ** most recent files in repos **
-- xmrig,bzminer,rigel,srbminer,lolminer hashrates, only first algo atm
+- xmrig,bzminer,rigel,srbminer,lolminer,wildrig hashrates, only first algo atm
 - api settings need to be in cmd line,
 - bzminer works by default
 - see api-settings.txt
