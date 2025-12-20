@@ -577,6 +577,53 @@ def collect_onezerominer_stats():
         "rejected": rejected
     }
 
+def collect_gminer_stats():
+    host = os.environ.get("GMINER_API_HOST", "127.0.0.1")
+    port = int(os.environ.get("GMINER_API_PORT", "10050"))
+    url = f"http://{host}:{port}/stat"
+
+    try:
+        with urllib.request.urlopen(url, timeout=1.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        return {"status": "offline", "error": str(e)}
+
+    # -------------------------------
+    # Basic fields
+    # -------------------------------
+    algo = data.get("algorithm")
+    uptime_s = data.get("uptime")
+
+    # -------------------------------
+    # Hashrate (H/s) — sum GPUs
+    # -------------------------------
+    total_hs = 0
+    devices = data.get("devices", [])
+
+    if isinstance(devices, list):
+        for d in devices:
+            speed = d.get("speed")
+            if isinstance(speed, (int, float)):
+                total_hs += speed
+
+    if total_hs <= 0:
+        total_hs = None
+
+    # -------------------------------
+    # Shares
+    # -------------------------------
+    accepted = data.get("total_accepted_shares")
+    rejected = data.get("total_rejected_shares")
+
+    return {
+        "status": "ok",
+        "algo": algo,
+        "uptime_s": uptime_s,
+        "total_hs": total_hs,
+        "accepted": accepted,
+        "rejected": rejected
+    }
+
 def collect_xmrig_stats():
     host = os.environ.get("XMRIG_HTTP_HOST", "127.0.0.1")
     port = int(os.environ.get("XMRIG_HTTP_PORT", "18080"))
@@ -626,6 +673,7 @@ def collect_full_stats():
         "miner_srbminer": collect_srbminer_stats(),
         "miner_wildrig": collect_wildrig_stats(),
         "miner_onezerominer": collect_onezerominer_stats(),
+        "miner_gminer": collect_gminer_stats(),
         "miner_xmrig": collect_xmrig_stats(),
         "docker": collect_docker_containers(),
         "cpu_service": collect_service_uptime("docker_events_cpu.service"),

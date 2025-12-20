@@ -213,6 +213,7 @@ function updateActionStats() {
         srb_cpu: 0,
 		wildrig: 0,
 		onezerominer: 0,
+		gminer: 0,
     };
 
     // Scope:
@@ -277,6 +278,10 @@ function updateActionStats() {
         if (typeof d.miner_onezerominer?.total_hs === "number") {
             minerTotals.onezerominer += d.miner_onezerominer.total_hs;
         }
+        // GMiner
+        if (typeof d.miner_gminer?.total_hs === "number") {
+                minerTotals.gminer += d.miner_gminer.total_hs;
+        }
     });
 
     /* ---------------- Render GPU watts ---------------- */
@@ -324,6 +329,10 @@ function updateActionStats() {
 	if (minerTotals.onezerominer > 0) {
         minerParts.push(`OneZeroMiner ${fmtRateHs(minerTotals.onezerominer, "")}`);
     }
+    if (minerTotals.gminer > 0) {
+        minerParts.push(`GMiner ${fmtRateHs(minerTotals.gminer, "")}`);
+    }
+
 
     hashEl.textContent =
         minerParts.length > 0
@@ -424,6 +433,7 @@ function render() {
 		const lm  = d.miner_lolminer;
 		const wr  = d.miner_wildrig;
 		const oz  = d.miner_onezerominer;
+		const gm  = d.miner_gminer;
 		
         let minerRight = "";
 
@@ -538,6 +548,19 @@ function render() {
                 </div>`;
         }
 
+        /* ----- GMiner ----- */
+        if (gm && hasPositiveRate(gm.total_hs)) {
+                const rate = fmtRateHs(gm.total_hs, "");
+
+                minerRight += `
+                <div class="miner-row">
+                        <b>GMiner</b> — ${rate}
+                        <span style="float:right;color:#aaa">
+                                ${fmtUptime(gm.uptime_s)}
+                        </span>
+                </div>`;
+        }
+
         /* ----- Header only if something rendered ----- */
         if (minerRight !== "") {
             minerRight =
@@ -587,6 +610,9 @@ function render() {
             
 			oz?.total_hs > 0
                 ? fmtRateHs(oz.total_hs, "Onezerominer")
+                : null,
+            gm?.total_hs > 0
+                ? fmtRateHs(gm.total_hs, "GMiner")
                 : null,
         ]
             .filter(Boolean)
