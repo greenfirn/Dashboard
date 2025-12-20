@@ -1,6 +1,6 @@
 html Dashboard for ubuntu server rigs...
 
-- fixed 'version 1 is deprecated', srbminer hashrates now working
+- fixed 'version 1 is deprecated'
 
 - click a row shows more details about docker containers running etc
 - hold ctrl click rigname to select individual rows
@@ -14,7 +14,7 @@ html Dashboard for ubuntu server rigs...
 ![Dashboard Screenshot](Screenshot.png)
 
 ** most recent files in repos **
-- xmrig,bzminer,rigel,srbminer hashrates
+- xmrig,bzminer,rigel,srbminer,lolminer hashrates, only first algo atm
 - api settings need to be in cmd line,
 - bzminer works by default
 - see api-settings.txt
