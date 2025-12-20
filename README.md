@@ -18,7 +18,8 @@ html Dashboard for ubuntu server rigs...
 - api settings need to be in cmd line,
 - bzminer works by default
 - see api-settings.txt
-- 'Both' is meant to start, stop, restart a 3rd CPU and GPU service
+- in rigcloud_cmd.sh 'Both' is meant to start, stop, restart
+- a 3rd CPU and GPU service but not using it
 
 windows setup:
 - install python on whatever pc you want to use as website host/backend see python-setup.txt
