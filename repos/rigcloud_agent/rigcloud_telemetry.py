@@ -427,6 +427,57 @@ def collect_srbminer_stats():
         "rejected": rejected,
     }
 
+def collect_wildrig_stats():
+    host = os.environ.get("WILDRIG_API_HOST", "127.0.0.1")
+    port = int(os.environ.get("WILDRIG_API_PORT", "4000"))
+    url = f"http://{host}:{port}"
+
+    try:
+        with urllib.request.urlopen(url, timeout=1.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        return {"status": "offline", "error": str(e)}
+
+    # -------------------------------
+    # Basic fields
+    # -------------------------------
+    algo = data.get("algo")
+    uptime_s = data.get("uptime")
+
+    # -------------------------------
+    # Hashrate (H/s)
+    # -------------------------------
+    total_hs = None
+    hr = data.get("hashrate", {}).get("total")
+
+    if isinstance(hr, list) and len(hr) > 0:
+        total_hs = hr[0]
+
+    # -------------------------------
+    # Shares
+    # -------------------------------
+    accepted = None
+    rejected = None
+
+    results = data.get("results", {})
+    acc = results.get("shares_accepted")
+    rej = results.get("shares_rejected")
+
+    if isinstance(acc, list) and acc:
+        accepted = acc[0]
+
+    if isinstance(rej, list) and rej:
+        rejected = rej[0]
+
+    return {
+        "status": "ok",
+        "algo": algo,
+        "uptime_s": uptime_s,
+        "total_hs": total_hs,
+        "accepted": accepted,
+        "rejected": rejected
+    }
+
 def collect_lolminer_stats():
     host = os.environ.get("LOLMINER_API_HOST", "127.0.0.1")
     port = int(os.environ.get("LOLMINER_API_PORT", "8020"))
@@ -528,6 +579,7 @@ def collect_full_stats():
         "miner_bzminer": collect_bzminer_stats(),
         "miner_lolminer": collect_lolminer_stats(),
         "miner_srbminer": collect_srbminer_stats(),
+        "miner_wildrig": collect_wildrig_stats(),
         "miner_xmrig": collect_xmrig_stats(),
         "docker": collect_docker_containers(),
         "cpu_service": collect_service_uptime("docker_events_cpu.service"),

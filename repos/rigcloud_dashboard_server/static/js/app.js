@@ -210,7 +210,8 @@ function updateActionStats() {
         rigel: 0,
 		lolminer: 0,
         srb_gpu: 0,
-        srb_cpu: 0
+        srb_cpu: 0,
+		wildrig: 0
     };
 
     // Scope:
@@ -267,6 +268,10 @@ function updateActionStats() {
         if (typeof d.miner_srbminer?.cpu_hs === "number") {
             minerTotals.srb_cpu += d.miner_srbminer.cpu_hs;
         }
+		// wildrig
+        if (typeof d.miner_wildrig?.total_hs === "number") {
+            minerTotals.wildrig += d.miner_wildrig.total_hs;
+        }
     });
 
     /* ---------------- Render GPU watts ---------------- */
@@ -301,6 +306,9 @@ function updateActionStats() {
         }
 
         minerParts.push(`SRBMiner ${parts.join(" | ")}`);
+    }
+	if (minerTotals.wildrig > 0) {
+        minerParts.push(`Wildrig ${fmtRateHs(minerTotals.wildrig, "")}`);
     }
 
     hashEl.textContent =
@@ -400,6 +408,7 @@ function render() {
         const bz  = d.miner_bzminer;
         const xm  = d.miner_xmrig;
 		const lm  = d.miner_lolminer;
+		const wr  = d.miner_wildrig;
 
         let minerRight = "";
 
@@ -488,6 +497,18 @@ function render() {
                 }
         }
 
+        /* ----- WildRig ----- */
+        if (wr && hasPositiveRate(wr.total_hs)) {
+            const rate = fmtRateHs(wr.total_hs, "");
+
+            minerRight += `
+                <div class="miner-row">
+                    <b>WildRig</b> — ${rate}
+                    <span style="float:right;color:#aaa">
+                        ${fmtUptime(wr.uptime_s)}
+                    </span>
+                </div>`;
+        }
 
         /* ----- Header only if something rendered ----- */
         if (minerRight !== "") {
@@ -530,6 +551,10 @@ function render() {
                   ]
                         .filter(Boolean)
                         .join(" | ")
+                : null,
+			
+			wr?.total_hs > 0
+                ? fmtRateHs(wr.total_hs, "Wildrig")
                 : null
         ]
             .filter(Boolean)
