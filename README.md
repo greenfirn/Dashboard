@@ -3,6 +3,7 @@ html Dashboard for ubuntu server rigs...
 - fixed 'version 1 is deprecated', srbminer hashrates now working
 
 - click a row shows more details about docker containers running etc
+- hold ctrl click rigname to select individual rows
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
 - see install-services.sh and docker_events_universal.sh
 - custom commands with reply, install miners, create files with tee echo etc
