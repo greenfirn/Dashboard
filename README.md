@@ -13,8 +13,7 @@ html Dashboard for ubuntu server rigs...
 ![Dashboard Screenshot](Screenshot.png)
 
 ** most recent files in repos **
-- xmrig,bzminer,rigel hashrates
-- srbminer configured, not confirmed working
+- xmrig,bzminer,rigel,srbminer hashrates
 - api settings need to be in cmd line,
 - bzminer works by default
 - see api-settings.txt
