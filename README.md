@@ -25,7 +25,9 @@ html Dashboard for ubuntu server rigs...
 - a 3rd CPU and GPU service but not using it
 
 windows setup:
-- install python on whatever pc you want to use as website host/backend see python-setup.txt
+- for best compabibility install python v 3.11.x
+- ... https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
+- on whatever pc you want to use as website host/backend see python-setup.txt
 - load rigcloud_dashboard_server.py, I use visual studio community for developement
 - install x64 version of mqtt broker from https://mosquitto.org/download/ see mosquitto-setup.txt
 - set mode to local near top of rigcloud_dashboard_server.py will run mqtt on start hidden
