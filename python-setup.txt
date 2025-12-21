@@ -6,6 +6,12 @@ https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
 # or were ever rigcloud_dashboard_server.py lives
 # save requirements.txt
 
+# visual studio: creates environment for you
+# click on python version dropdown choose add environment
+# give it a name .venv
+# select v3.11 and requirements.txt
+# create
+
 # create virtual environment, activate
 py -3.11 -m venv .venv
 .venv\Scripts\activate
