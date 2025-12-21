@@ -2,7 +2,9 @@ https://www.python.org/downloads/windows/
 
 https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
 
-# browse to your project root save requirements.txt
+# browse to your project root
+# or were ever rigcloud_dashboard_server.py lives
+# save requirements.txt
 
 # create virtual environment:
 py -3.11 -m venv .venv
