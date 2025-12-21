@@ -47,30 +47,6 @@ EOF
 
 #========================================================================================================
 
-# -- write CPU and GPU service --
-
-sudo tee /etc/systemd/system/docker_events.service > /dev/null <<'EOF'
-[Unit]
-Description=docker_events Watchdog
-After=docker.service
-After=nvidia-persistenced.service
-Requires=docker.service
-
-[Service]
-User=root
-#Environment="OC_FILE=/home/user/rig.conf"
-ExecStartPre=/bin/chmod +x /usr/local/bin/docker_events.sh
-ExecStart=/usr/local/bin/docker_events.sh
-Restart=always
-RestartSec=2
-Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-#========================================================================================================
-
 # let daemon know about changes
 sudo systemctl daemon-reload
 
