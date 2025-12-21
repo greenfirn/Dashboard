@@ -2,13 +2,18 @@ https://www.python.org/downloads/windows/
 
 https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
 
-# create virtual environment in project root:
+# browse to your project root save requirements.txt
+
+# create virtual environment:
 py -3.11 -m venv .venv
+
+# activate
 .venv\Scripts\activate
 
 # confirm version
 python --version
 
-# install dependencies into the venv
+# install dependencies into the venv .. 
 python -m pip install --upgrade pip
-python -m pip install fastapi uvicorn pydantic boto3
+python -m pip install -r requirements.txt
+
