@@ -6,10 +6,8 @@ https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
 # or were ever rigcloud_dashboard_server.py lives
 # save requirements.txt
 
-# create virtual environment:
+# create virtual environment, activate
 py -3.11 -m venv .venv
-
-# activate
 .venv\Scripts\activate
 
 # confirm version
