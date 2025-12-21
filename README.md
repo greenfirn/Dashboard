@@ -5,7 +5,7 @@ html Dashboard for ubuntu server rigs...
 - click a row shows more details about docker containers running etc
 - hold ctrl click rigname to select individual rows
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
-- see install-services.sh and docker_events_universal.sh
+- see 'run a miner-services.sh' and 'run a miner-script.sh'
 - custom commands with reply, install miners, create files with tee echo etc
 - index.html serves dashboard, customise colors etc in .css file
 - working on more capabilities, design is just what chatgpt suggested for dark theme
