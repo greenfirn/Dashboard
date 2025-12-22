@@ -11,6 +11,8 @@ python --version
 
 # install dependencies into the venv
 python -m pip install --upgrade pip
-python -m pip install fastapi uvicorn pydantic boto3
+
+python -m pip install -r requirements.txt
+
 
 
