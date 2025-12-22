@@ -1,7 +1,7 @@
 html Dashboard for ubuntu server rigs...
 
-- fixed 'version 1 is deprecated'
-
+- added save/delete/apply 'flightsheet' using aws dynamodb
+- create a iam profile with db access and save accessKeys.cvs in root of app
 - click a row shows more details about docker containers running etc
 - hold ctrl click rigname to select individual rows
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
