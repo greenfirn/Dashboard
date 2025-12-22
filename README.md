@@ -5,7 +5,8 @@ html Dashboard for ubuntu server rigs...
 - click a row shows more details about docker containers running etc
 - hold ctrl click rigname to select individual rows
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
-- see install-services.sh and docker_events_universal.sh
+- see run-a-miner-services.sh and run-a-miner-script.sh or
+- https://github.com/greenfirn/Docker-Events/tree/main/source
 - custom commands with reply, install miners, create files with tee echo etc
 - index.html serves dashboard, customise colors etc in .css file
 - working on more capabilities, design is just what chatgpt suggested for dark theme
@@ -24,7 +25,8 @@ html Dashboard for ubuntu server rigs...
 - a 3rd CPU and GPU service but not using it
 
 windows setup:
-- install python on whatever pc you want to use as website host/backend see python-setup.txt
+- for best compadability install python v3.11.x see python-setup.txt
+- on whatever pc you want to use as website host/backend see python-setup.txt
 - load rigcloud_dashboard_server.py, I use visual studio community for developement
 - install x64 version of mqtt broker from https://mosquitto.org/download/ see mosquitto-setup.txt
 - set mode to local near top of rigcloud_dashboard_server.py will run mqtt on start hidden
