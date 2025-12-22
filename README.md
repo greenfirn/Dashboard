@@ -2,7 +2,7 @@ html Dashboard for ubuntu server rigs...
 
 - added save/delete/apply 'flightsheet' using aws dynamodb
 - create a iam profile with db access and save accessKeys.cvs in root of app
-- click a row shows more details about docker containers running etc
+- click a row shows more details, click title hides row, click name to restore hidden 
 - hold ctrl click rigname to select individual rows
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
 - see run-a-miner-services.sh and run-a-miner-script.sh or
