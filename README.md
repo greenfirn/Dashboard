@@ -51,7 +51,9 @@ aws advanced setup:
 - caddy handles certificates, routing
 - running server.py on aws lambda might be possible havnt looked into it yet
 
-'flightsheet' just saves text for now
+'flightsheet' 
+- saves as text for now
+- apply copies text over to send cmd and wraps it in tee EOF restart
 
 ![Dashboard flightsheet](Screenshot-flightsheet.png)
 
