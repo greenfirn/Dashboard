@@ -1,120 +1,158 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>RigCloud Dashboard</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="/static/css/app.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RigCloud Dashboard</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script src="/static/js/app.js"></script>
 </head>
 <body>
-<!-- ================= ACTION BAR ================= -->
-<div id="action-bar">
+    <!-- ================= ACTION BAR ================= -->
+    <div id="action-bar">
+        <!-- LEFT ACTIONS -->
+        <div class="action-left">
+            <button class="action-btn cmd-btn" id="btn-send-cmd" title="Send command">
+                >_
+            </button>
 
-    <!-- SEND COMMAND + SELECT (FAR LEFT) -->
-    <div class="action-left">
-        <button
-            class="action-btn cmd-btn"
-            id="btn-send-cmd"
-            title="Send command to selected rigs">
-            >_
-        </button>
-        <span class="action-mode-sep"></span>
-        <button
-            class="action-btn"
-            id="btn-toggle-select"
-            title="Select / Unselect">
-            ✕
-        </button>
-    </div>
+            <button class="action-btn" id="btn-flightsheets" title="Flightsheets">
+                FS
+            </button>
 
-    <!-- MODE SELECT -->
-    <div class="action-modes">
-		<button class="action-tab" data-mode="all" onclick="setActionMode('all')">ALL</button>
-		<button class="action-tab active" data-mode="cpu" onclick="setActionMode('cpu')">CPU</button>
-        <button class="action-tab" data-mode="gpu" onclick="setActionMode('gpu')">GPU</button>
-    </div>
+            <span class="action-mode-sep"></span>
 
-    <!-- ACTION BUTTONS -->
-    <div class="action-buttons">
-        <button class="action-btn" title="Start" onclick="actionStart()">▶</button>
-        <button class="action-btn" title="Stop" onclick="actionStop()">■</button>
-        <button class="action-btn" title="Restart" onclick="actionRestart()">↻</button>
-    </div>
-
-    <!-- FLEX SPACER -->
-    <div class="action-spacer"></div>
-    <!-- ACTION STATUS OUTPUT -->
-    <div class="action-status">
-        <textarea
-            id="action-output"
-            class="action-output collapsed"
-            readonly
-            placeholder="Action output..."
-            rows="1"
-        ></textarea>
-    </div>
-
-    <!-- ACTION STATS (FAR RIGHT) -->
-    <div class="action-stats">
-		<span id="stat-gpu-watts">--</span>
-        <span id="stat-hashrate">--</span>
-    </div>
-
-</div>
-<!-- Command Modal -->
-<div id="cmd-modal" class="cmd-modal hidden" onclick="closeCmdModal()">
-    <div class="cmd-dialog" onclick="event.stopPropagation()">
-        <div class="cmd-header">
-            <span>Send Command</span>
-            <span class="cmd-target">
-                (<span id="cmd-target-count">0</span> rigs)
-            </span>
+            <button class="action-btn" id="btn-toggle-select" title="Select / Unselect">
+                ✕
+            </button>
         </div>
 
-        <textarea
-            id="cmd-input"
-            spellcheck="false"
-            placeholder="# Enter command(s) to execute on selected rigs
+        <!-- MODE SELECT -->
+        <div class="action-modes">
+            <button class="action-tab" data-mode="all" id="btn-mode-all">ALL</button>
+            <button class="action-tab active" data-mode="cpu" id="btn-mode-cpu">CPU</button>
+            <button class="action-tab" data-mode="gpu" id="btn-mode-gpu">GPU</button>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="action-buttons">
+            <button class="action-btn" id="btn-action-start">▶</button>
+            <button class="action-btn" id="btn-action-stop">■</button>
+            <button class="action-btn" id="btn-action-restart">↻</button>
+        </div>
+
+        <div class="action-spacer"></div>
+
+        <!-- STATUS OUTPUT -->
+        <div class="action-status">
+            <textarea
+                id="action-output"
+                class="action-output collapsed"
+                readonly
+                placeholder="Action output..."
+                rows="1"
+            ></textarea>
+        </div>
+
+        <!-- STATS -->
+        <div class="action-stats">
+            <span id="stat-gpu-watts">-- W</span>
+            <span id="stat-hashrate">-- H/s</span>
+        </div>
+    </div>
+
+    <!-- ================= COMMAND MODAL ================= -->
+    <div id="cmd-modal" class="cmd-modal hidden">
+        <div class="cmd-dialog">
+            <div class="cmd-header">
+                <span>Send Command</span>
+                <span class="cmd-target">
+                    (<span id="cmd-target-count">0</span> rigs)
+                </span>
+            </div>
+
+            <textarea
+                id="cmd-input"
+                spellcheck="false"
+                placeholder="# Enter command(s) to execute on selected rigs
 # Example:
 uptime
 df -h
 nvidia-smi
 "></textarea>
 
-        <!-- 🔽 COMMAND OUTPUT (THIS WAS MISSING) -->
-        <pre id="cmd-output" class="cmd-output"></pre>
+            <pre id="cmd-output" class="cmd-output"></pre>
 
-        <div class="cmd-footer">
-            <button class="cmd-btn cancel" onclick="closeCmdModal()">Cancel</button>
-            <button class="cmd-btn ok" onclick="submitCmd()">Send</button>
+            <div class="cmd-footer">
+                <button class="cmd-btn ok" id="btn-cmd-send">Send</button>
+                <button class="cmd-btn cancel" id="btn-cmd-cancel">Close</button>
+            </div>
         </div>
     </div>
-</div>
 
-<div class="rig-header">
-    <div class="rig-main rig-header-grid">
-        <div class="header-item title-left">
-            <span class="reset-btn" title="Hard reset rigs" onclick="hardReset(event)">⟳</span>
-            <span>Name</span>
+    <!-- ================= FLIGHTSHEETS MODAL ================= -->
+    <div id="fs-modal" class="cmd-modal hidden">
+        <div class="cmd-dialog">
+            <div class="cmd-header">
+                <span>Flightsheets</span>
+            </div>
+
+            <div class="cmd-body">
+                <!-- Flightsheets list (TOP) -->
+                <div id="fs-list" class="fs-list">
+                    <!-- populated by JS -->
+                </div>
+
+                <!-- Raw editor (MIDDLE) -->
+                <textarea
+                    id="fs-raw"
+                    spellcheck="false"
+                    placeholder="# Flightsheet raw content"
+                ></textarea>
+            </div>
+
+            <!-- FOOTER: name + buttons -->
+            <div class="cmd-footer">
+                <input
+                    type="text"
+                    id="fs-name"
+                    placeholder="Flightsheet name"
+                    autocomplete="off"
+                />
+                <button class="cmd-btn" id="btn-save-fs">Save</button>
+                <button class="cmd-btn ok" id="btn-apply-fs">Apply</button>
+                <button class="cmd-btn cancel" id="btn-close-fs">Close</button>
+                <button class="cmd-btn" id="btn-delete-fs" style="background: #b00020; color: white;">Delete</button>
+            </div>
         </div>
-        <div class="header-item metric">CPU °C</div>
-        <div class="header-item metric">CPU %</div>
-        <div class="header-item metric">LA ( 1m, 5m, 15m )</div>
-        <div class="header-item metric">RAM</div>
-        <div class="header-item metric">GPU °C</div>
-        <div class="header-item metric">GPU %</div>
-        <div class="header-item metric">GPU W</div>
-        <div class="header-item metric">Fan</div>
-        <div class="header-item metric">VRAM</div>
-        <div class="header-item metric">Core</div>
-        <div class="header-item metric">Mem</div>
-        <div class="header-item metric">CPU</div>
-        <div class="header-item metric">GPU</div>
-        <div class="header-item metric">D</div>
-        <div class="header-item title-left">Miner</div>
     </div>
-</div>
-<div id="rig-container"></div>
-<script src="/static/js/app.js"></script>
+
+    <!-- ================= RIG HEADER ================= -->
+    <div class="rig-header">
+        <div class="rig-main rig-header-grid">
+            <div class="header-item title-left">
+                <span class="reset-btn" id="btn-reset" title="Hard reset rigs">⟳</span>
+                <span>Name</span>
+            </div>
+            <div class="header-item metric">CPU °C</div>
+            <div class="header-item metric">CPU %</div>
+            <div class="header-item metric">LA ( 1m, 5m, 15m )</div>
+            <div class="header-item metric">RAM</div>
+            <div class="header-item metric">GPU °C</div>
+            <div class="header-item metric">GPU %</div>
+            <div class="header-item metric">GPU W</div>
+            <div class="header-item metric">Fan</div>
+            <div class="header-item metric">VRAM</div>
+            <div class="header-item metric">Core</div>
+            <div class="header-item metric">Mem</div>
+            <div class="header-item metric">CPU</div>
+            <div class="header-item metric">GPU</div>
+            <div class="header-item metric">D</div>
+            <div class="header-item title-left">Miner</div>
+        </div>
+    </div>
+
+    <!-- ================= RIG CONTAINER ================= -->
+    <div id="rig-container"></div>
 </body>
 </html>

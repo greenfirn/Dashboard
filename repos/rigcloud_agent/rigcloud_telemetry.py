@@ -21,6 +21,44 @@ def run(cmd: str):
     )
     return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
 
+def normalize_to_hs(value, unit=None):
+    """Convert any hash rate unit to H/s"""
+    if value is None:
+        return None
+    
+    try:
+        val = float(value)
+        
+        if unit is None:
+            # Try to guess from magnitude
+            if val >= 1e12:
+                return val  # Assume already H/s if huge
+            elif val >= 1e9:
+                return val * 1e9  # GH/s to H/s
+            elif val >= 1e6:
+                return val * 1e6  # MH/s to H/s
+            elif val >= 1e3:
+                return val * 1e3  # kH/s to H/s
+            else:
+                return val  # Assume H/s
+        
+        unit = unit.lower().strip()
+        if unit in ['h/s', 'hs', 'hash', 'hashes']:
+            return val
+        elif unit in ['kh/s', 'khs', 'kilo']:
+            return val * 1e3
+        elif unit in ['mh/s', 'mhs', 'mega']:
+            return val * 1e6
+        elif unit in ['gh/s', 'ghs', 'giga']:
+            return val * 1e9
+        elif unit in ['th/s', 'ths', 'tera']:
+            return val * 1e12
+        elif unit in ['ph/s', 'phs', 'peta']:
+            return val * 1e15
+        else:
+            return val  # Default to H/s
+    except (ValueError, TypeError):
+        return None
 
 def service_status(service):
     rc, out, _ = run(f"systemctl is-active {service}")
@@ -84,7 +122,6 @@ def collect_gpu_stats():
             continue
 
     return gpus
-
 
 def collect_cpu_temp():
     # 1) Try Intel-style hwmon sensors ("coretemp")
@@ -167,12 +204,10 @@ def collect_cpu_usage():
 
     return round(100 * (1 - (idle2 - idle1) / (total2 - total1)), 1)
 
-
 def collect_load():
     with open("/proc/loadavg") as f:
         l1, l5, l15, *_ = f.read().split()
     return {"1m": float(l1), "5m": float(l5), "15m": float(l15)}
-
 
 def collect_memory():
     mem = {}
@@ -191,7 +226,6 @@ def collect_memory():
         "free_mb": avail // 1024,
         "percent": round((used / total * 100), 1) if total else 0.0
     }
-
 
 def collect_docker_containers():
     containers = []
@@ -245,7 +279,6 @@ def collect_docker_containers():
 
     return containers
 
-
 def collect_service_uptime(service):
     try:
         rc, out, _ = run(f"systemctl is-active {service}")
@@ -284,17 +317,35 @@ def collect_bzminer_stats():
         return {"status": "offline", "error": str(e)}
 
     pools = data.get("pools") or []
-    pool0 = pools[0] if pools else {}
-
-    raw_hash = pool0.get("hashrate")
-    total_mhs = float(raw_hash) / 1_000_000 if raw_hash else None
+    algorithms = []
+    
+    # Collect data per algorithm from each pool
+    for pool in pools:
+        algo = pool.get("algorithm")
+        if not algo:
+            continue
+            
+        pool_url = pool.get("url", "").split("://")[-1].split(":")[0]
+        raw_hash = pool.get("hashrate")
+        
+        # BzMiner reports in H/s directly
+        hashrate_hs = float(raw_hash) if raw_hash else None
+        
+        algo_data = {
+            "algorithm": algo,
+            "pool": pool_url,
+            "hashrate_hs": hashrate_hs,
+            "accepted_shares": pool.get("valid_solutions"),
+            "rejected_shares": pool.get("rejected_solutions"),
+            "workers": pool.get("workers")
+        }
+        
+        algorithms.append(algo_data)
 
     return {
         "status": "ok",
-        "uptime_s": pool0.get("uptime_s") or data.get("uptime_s"),
-        "total_mhs": total_mhs,
-        "accepted": pool0.get("valid_solutions"),
-        "rejected": pool0.get("rejected_solutions")
+        "uptime_s": data.get("uptime_s") or (pools[0].get("uptime_s") if pools else None),
+        "algorithms": algorithms
     }
 
 def collect_rigel_stats():
@@ -309,39 +360,43 @@ def collect_rigel_stats():
     except Exception as e:
         return {"status": "offline", "error": str(e)}
 
-    algo = data.get("algorithm")
-    uptime_s = data.get("uptime")
-
-    total_hs = None
-    pool_hs = None
-
-    # Rigel reports hashrate per-algorithm
+    # Get algorithms from hashrate
     hr = data.get("hashrate", {})
-    phr = data.get("pool_hashrate", {})
-
-    if algo and isinstance(hr, dict):
-        total_hs = hr.get(algo)
-
-    if algo and isinstance(phr, dict):
-        pool_hs = phr.get(algo)
-
-    # Shares (global)
-    accepted = None
-    rejected = None
-
-    sol = data.get("solution_stat", {}).get(algo)
+    pool_hr = data.get("pool_hashrate", {})
+    sol = data.get("solution_stat", {})
+    pool_data = data.get("pool", {})
+    
+    algorithms = []
+    
+    # Collect all unique algorithms
+    all_algos = set()
+    if isinstance(hr, dict):
+        all_algos.update(hr.keys())
+    if isinstance(pool_hr, dict):
+        all_algos.update(pool_hr.keys())
     if isinstance(sol, dict):
-        accepted = sol.get("accepted")
-        rejected = sol.get("rejected")
+        all_algos.update(sol.keys())
+    
+    for algo in all_algos:
+        algo_sol = sol.get(algo, {}) if isinstance(sol, dict) else {}
+        
+        # Rigel reports in H/s
+        hashrate_hs = hr.get(algo) if isinstance(hr, dict) else None
+        
+        algo_data = {
+            "algorithm": algo,
+            "hashrate_hs": hashrate_hs,
+            "pool_hashrate_hs": pool_hr.get(algo) if isinstance(pool_hr, dict) else None,
+            "accepted_shares": algo_sol.get("accepted") if isinstance(algo_sol, dict) else None,
+            "rejected_shares": algo_sol.get("rejected") if isinstance(algo_sol, dict) else None,
+            "pool": pool_data.get("url", "").split("://")[-1].split(":")[0] if algo == list(all_algos)[0] else None
+        }
+        algorithms.append(algo_data)
 
     return {
         "status": "ok",
-        "algo": algo,
-        "uptime_s": uptime_s,
-        "total_hs": total_hs,
-        "pool_hs": pool_hs,
-        "accepted": accepted,
-        "rejected": rejected
+        "uptime_s": data.get("uptime"),
+        "algorithms": algorithms
     }
 
 def collect_srbminer_stats():
@@ -359,72 +414,41 @@ def collect_srbminer_stats():
         }
 
     algos = data.get("algorithms", [])
-    if not algos:
-        return {
-            "status": "ok",
-            "note": "no algorithms running"
+    algorithms = []
+    
+    for algo_data in algos:
+        name = algo_data.get("name")
+        if not name:
+            continue
+            
+        hr = algo_data.get("hashrate", {})
+        cpu_block = hr.get("cpu", {}) if isinstance(hr, dict) else {}
+        gpu_block = hr.get("gpu", {}) if isinstance(hr, dict) else {}
+        
+        # SRBMiner reports in H/s
+        cpu_hs = cpu_block.get("total")
+        gpu_hs = gpu_block.get("total")
+        hashrate_hs = (cpu_hs or 0) + (gpu_hs or 0)
+        
+        shares = algo_data.get("shares", {})
+        
+        algo_info = {
+            "algorithm": name,
+            "cpu_hashrate_hs": cpu_hs,
+            "gpu_hashrate_hs": gpu_hs,
+            "hashrate_hs": hashrate_hs if hashrate_hs > 0 else None,
+            "accepted_shares": shares.get("accepted"),
+            "rejected_shares": shares.get("rejected"),
+            "cpu_workers": data.get("total_cpu_workers"),
+            "gpu_workers": data.get("total_gpu_workers")
         }
-
-    a0 = algos[0]
-
-    # -------------------------------
-    # Hashrates
-    # -------------------------------
-    hr = a0.get("hashrate", {})
-
-    cpu_block = hr.get("cpu", {}) if isinstance(hr, dict) else {}
-    gpu_block = hr.get("gpu", {}) if isinstance(hr, dict) else {}
-
-    cpu_hs = cpu_block.get("total")
-    gpu_hs = gpu_block.get("total")
-
-    # Compute combined total only when values exist
-    total_hs = 0.0
-    if isinstance(cpu_hs, (int, float)):
-        total_hs += cpu_hs
-    if isinstance(gpu_hs, (int, float)):
-        total_hs += gpu_hs
-
-    # -------------------------------
-    # Shares
-    # -------------------------------
-    shares = a0.get("shares", {})
-    accepted = shares.get("accepted")
-    rejected = shares.get("rejected")
-
-    # -------------------------------
-    # Workers
-    # -------------------------------
-    cpu_workers = data.get("total_cpu_workers")
-    gpu_workers = data.get("total_gpu_workers")
-
-    # -------------------------------
-    # Uptime
-    # -------------------------------
-    uptime_s = (
-        data.get("mining_time")
-        or data.get("uptime")
-        or data.get("uptime_s")
-    )
+        algorithms.append(algo_info)
 
     return {
         "status": "ok",
         "miner": "srbminer",
-        "algo": a0.get("name"),
-        "uptime_s": uptime_s,
-
-        # Workers
-        "cpu_workers": cpu_workers,
-        "gpu_workers": gpu_workers,
-
-        # Hashrates (H/s)
-        "cpu_hs": cpu_hs,
-        "gpu_hs": gpu_hs,
-        "total_hs": total_hs if total_hs > 0 else None,
-
-        # Shares
-        "accepted": accepted,
-        "rejected": rejected,
+        "uptime_s": data.get("mining_time") or data.get("uptime") or data.get("uptime_s"),
+        "algorithms": algorithms
     }
 
 def collect_wildrig_stats():
@@ -438,44 +462,33 @@ def collect_wildrig_stats():
     except Exception as e:
         return {"status": "offline", "error": str(e)}
 
-    # -------------------------------
-    # Basic fields
-    # -------------------------------
     algo = data.get("algo")
-    uptime_s = data.get("uptime")
-
-    # -------------------------------
-    # Hashrate (H/s)
-    # -------------------------------
-    total_hs = None
-    hr = data.get("hashrate", {}).get("total")
-
-    if isinstance(hr, list) and len(hr) > 0:
-        total_hs = hr[0]
-
-    # -------------------------------
-    # Shares
-    # -------------------------------
-    accepted = None
-    rejected = None
-
-    results = data.get("results", {})
-    acc = results.get("shares_accepted")
-    rej = results.get("shares_rejected")
-
-    if isinstance(acc, list) and acc:
-        accepted = acc[0]
-
-    if isinstance(rej, list) and rej:
-        rejected = rej[0]
+    algorithms = []
+    
+    if algo:
+        hr = data.get("hashrate", {}).get("total")
+        # WildRig reports in H/s
+        hashrate_hs = hr[0] if isinstance(hr, list) and len(hr) > 0 else None
+        
+        results = data.get("results", {})
+        acc = results.get("shares_accepted")
+        rej = results.get("shares_rejected")
+        
+        accepted = acc[0] if isinstance(acc, list) and acc else None
+        rejected = rej[0] if isinstance(rej, list) and rej else None
+        
+        algo_data = {
+            "algorithm": algo,
+            "hashrate_hs": hashrate_hs,
+            "accepted_shares": accepted,
+            "rejected_shares": rejected
+        }
+        algorithms.append(algo_data)
 
     return {
         "status": "ok",
-        "algo": algo,
-        "uptime_s": uptime_s,
-        "total_hs": total_hs,
-        "accepted": accepted,
-        "rejected": rejected
+        "uptime_s": data.get("uptime"),
+        "algorithms": algorithms
     }
 
 def collect_lolminer_stats():
@@ -489,45 +502,33 @@ def collect_lolminer_stats():
     except Exception as e:
         return {"status": "offline", "error": str(e)}
 
-    # -------------------------------
-    # Uptime
-    # -------------------------------
-    uptime_s = data.get("Session", {}).get("Uptime")
-
     algos = data.get("Algorithms", [])
-    if not algos:
-        return {"status": "ok", "note": "no algorithms"}
-
-    a0 = algos[0]
-
-    # -------------------------------
-    # Algorithm
-    # -------------------------------
-    algo = a0.get("Algorithm")
-
-    # -------------------------------
-    # Hashrate (convert to H/s)
-    # -------------------------------
-    total_perf = a0.get("Total_Performance")
-    factor = a0.get("Performance_Factor", 1)
-
-    total_hs = None
-    if isinstance(total_perf, (int, float)):
-        total_hs = total_perf * factor
-
-    # -------------------------------
-    # Shares
-    # -------------------------------
-    accepted = a0.get("Total_Accepted")
-    rejected = a0.get("Total_Rejected")
+    algorithms = []
+    
+    for algo_data in algos:
+        algo_name = algo_data.get("Algorithm")
+        if not algo_name:
+            continue
+            
+        total_perf = algo_data.get("Total_Performance")
+        factor = algo_data.get("Performance_Factor", 1)
+        
+        # lolMiner: Total_Performance is in H/s, multiply by factor
+        hashrate_hs = total_perf * factor if isinstance(total_perf, (int, float)) else None
+        
+        algo_info = {
+            "algorithm": algo_name,
+            "hashrate_hs": hashrate_hs,
+            "accepted_shares": algo_data.get("Total_Accepted"),
+            "rejected_shares": algo_data.get("Total_Rejected"),
+            "pool": algo_data.get("Pool")
+        }
+        algorithms.append(algo_info)
 
     return {
         "status": "ok",
-        "algo": algo,
-        "uptime_s": uptime_s,
-        "total_hs": total_hs,
-        "accepted": accepted,
-        "rejected": rejected
+        "uptime_s": data.get("Session", {}).get("Uptime"),
+        "algorithms": algorithms
     }
 
 def collect_onezerominer_stats():
@@ -541,40 +542,30 @@ def collect_onezerominer_stats():
     except Exception as e:
         return {"status": "offline", "error": str(e)}
 
-    # -------------------------------
-    # Uptime
-    # -------------------------------
-    uptime_s = data.get("uptime_seconds")
-
     algos = data.get("algos", [])
-    if not algos:
-        return {"status": "ok", "note": "no algorithms"}
-
-    a0 = algos[0]
-
-    # -------------------------------
-    # Algorithm
-    # -------------------------------
-    algo = a0.get("name")
-
-    # -------------------------------
-    # Hashrate (H/s)
-    # -------------------------------
-    total_hs = a0.get("total_hashrate")
-
-    # -------------------------------
-    # Shares
-    # -------------------------------
-    accepted = a0.get("total_accepted_shares")
-    rejected = a0.get("total_rejected_shares")
+    algorithms = []
+    
+    for algo_data in algos:
+        name = algo_data.get("name")
+        if not name:
+            continue
+            
+        # OneZeroMiner reports in H/s
+        hashrate_hs = algo_data.get("total_hashrate")
+        
+        algo_info = {
+            "algorithm": name,
+            "hashrate_hs": hashrate_hs,
+            "accepted_shares": algo_data.get("total_accepted_shares"),
+            "rejected_shares": algo_data.get("total_rejected_shares"),
+            "pool": algo_data.get("pool")
+        }
+        algorithms.append(algo_info)
 
     return {
         "status": "ok",
-        "algo": algo,
-        "uptime_s": uptime_s,
-        "total_hs": total_hs,
-        "accepted": accepted,
-        "rejected": rejected
+        "uptime_s": data.get("uptime_seconds"),
+        "algorithms": algorithms
     }
 
 def collect_gminer_stats():
@@ -588,40 +579,35 @@ def collect_gminer_stats():
     except Exception as e:
         return {"status": "offline", "error": str(e)}
 
-    # -------------------------------
-    # Basic fields
-    # -------------------------------
     algo = data.get("algorithm")
-    uptime_s = data.get("uptime")
+    algorithms = []
+    
+    if algo:
+        total_hs = 0
+        devices = data.get("devices", [])
 
-    # -------------------------------
-    # Hashrate (H/s) — sum GPUs
-    # -------------------------------
-    total_hs = 0
-    devices = data.get("devices", [])
-
-    if isinstance(devices, list):
-        for d in devices:
-            speed = d.get("speed")
-            if isinstance(speed, (int, float)):
-                total_hs += speed
-
-    if total_hs <= 0:
-        total_hs = None
-
-    # -------------------------------
-    # Shares
-    # -------------------------------
-    accepted = data.get("total_accepted_shares")
-    rejected = data.get("total_rejected_shares")
+        if isinstance(devices, list):
+            for d in devices:
+                speed = d.get("speed")
+                if isinstance(speed, (int, float)):
+                    total_hs += speed
+        
+        # GMiner reports in H/s
+        hashrate_hs = total_hs if total_hs > 0 else None
+        
+        algo_data = {
+            "algorithm": algo,
+            "hashrate_hs": hashrate_hs,
+            "accepted_shares": data.get("total_accepted_shares"),
+            "rejected_shares": data.get("total_rejected_shares"),
+            "pool": data.get("pool")
+        }
+        algorithms.append(algo_data)
 
     return {
         "status": "ok",
-        "algo": algo,
-        "uptime_s": uptime_s,
-        "total_hs": total_hs,
-        "accepted": accepted,
-        "rejected": rejected
+        "uptime_s": data.get("uptime"),
+        "algorithms": algorithms
     }
 
 def collect_xmrig_stats():
@@ -637,24 +623,38 @@ def collect_xmrig_stats():
         return {"status": "offline", "error": str(e)}
 
     algo = data.get("algo")
-    uptime_s = data.get("uptime")
+    algorithms = []
+    
+    if algo:
+        hashrate = data.get("hashrate", {})
+        total = hashrate.get("total") or [0]
+        # XMRig reports in H/s
+        hashrate_hs = float(total[0]) if total else 0
 
-    hashrate = data.get("hashrate", {})
-    total = hashrate.get("total") or [0]
-    total_hs = float(total[0]) if total else 0
+        shares_good = data.get("results", {}).get("shares_good")
+        shares_total = data.get("results", {}).get("shares_total")
+        
+        rejected_shares = None
+        if shares_total is not None and shares_good is not None:
+            rejected_shares = shares_total - shares_good
+        
+        connection = data.get("connection", {})
+        pool_url = connection.get("url", "").split("://")[-1].split(":")[0] if connection else None
 
-    shares_good = data.get("results", {}).get("shares_good")
-    shares_total = data.get("results", {}).get("shares_total")
+        algo_data = {
+            "algorithm": algo,
+            "hashrate_hs": hashrate_hs,
+            "accepted_shares": shares_good,
+            "rejected_shares": rejected_shares,
+            "pool": pool_url
+        }
+        algorithms.append(algo_data)
 
     return {
         "status": "ok",
-        "algo": algo,
-        "uptime_s": uptime_s,
-        "total_hs": total_hs,
-        "shares_good": shares_good,
-        "shares_total": shares_total
+        "uptime_s": data.get("uptime"),
+        "algorithms": algorithms
     }
-
 
 def collect_full_stats():
     gpu_present = has_nvidia_gpu()

@@ -4,17 +4,96 @@ let lastUpdateTs = 0;
 let resetInProgress = false;
 let selectedRigs = new Set();
 let currentActionMode = localStorage.getItem("actionMode") || "all";
+let isSavingFlightsheet = false;
 
-document.addEventListener("DOMContentLoaded", () => {
+let flightsheets = [];
+let selectedFlightsheetId = null;
+
+let hiddenColumns = new Set(); // Tracks hidden column indices
+
+
+let API = "";
+
+// =====================================================
+// INITIALIZATION & EVENT LISTENERS
+// =====================================================
+
+async function loadConfig() {
+    const res = await fetch("/api/config");
+    if (!res.ok) {
+        throw new Error("Failed to load app config");
+    }
+
+    const cfg = await res.json();
+    API = cfg.basePath || "";
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+    
+    // Add click handlers for mode buttons
+    document.querySelectorAll(".action-tab").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            const mode = e.target.dataset.mode;
+            if (mode) setActionMode(mode);
+        });
+    });
+
+// Add header click functionality
+    setupHeaderClickHandlers();
+
+// Load saved hidden columns state
+    loadColumnState();
+
+// Apply hidden state to existing DOM
+    applyHiddenColumnsToDOM(); // Changed from restoreColumnStates()
+    
     // Toggle select all
-    document
-        .getElementById("btn-toggle-select")
-        ?.addEventListener("click", toggleSelectAll);
+    document.getElementById("btn-toggle-select")?.addEventListener("click", toggleSelectAll);
 
     // Open command modal
-    document
-        .getElementById("btn-send-cmd")
-        ?.addEventListener("click", openCmdModal);
+    document.getElementById("btn-send-cmd")?.addEventListener("click", openCmdModal);
+
+    // Open flightsheets modal
+    document.getElementById("btn-flightsheets")?.addEventListener("click", openFlightsheetsModal);
+
+    // Action buttons
+    document.getElementById("btn-action-start")?.addEventListener("click", actionStart);
+    document.getElementById("btn-action-stop")?.addEventListener("click", actionStop);
+    document.getElementById("btn-action-restart")?.addEventListener("click", actionRestart);
+
+    // Command modal buttons
+    document.getElementById("btn-cmd-send")?.addEventListener("click", submitCmd);
+    document.getElementById("btn-cmd-cancel")?.addEventListener("click", closeCmdModal);
+
+    // Flightsheets modal buttons
+    document.getElementById("btn-save-fs")?.addEventListener("click", saveFlightsheetFromDialog);
+    document.getElementById("btn-apply-fs")?.addEventListener("click", applyFlightsheet);
+    document.getElementById("btn-delete-fs")?.addEventListener("click", deleteFlightsheet);
+    document.getElementById("btn-close-fs")?.addEventListener("click", closeFlightsheetsModal);
+
+    // Reset button
+    document.getElementById("btn-reset")?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        hardReset(ev);
+    });
+
+    // Modal close on backdrop click
+    document.getElementById("cmd-modal")?.addEventListener("click", (e) => {
+        if (e.target.id === "cmd-modal") closeCmdModal();
+    });
+
+    document.getElementById("fs-modal")?.addEventListener("click", (e) => {
+        if (e.target.id === "fs-modal") closeFlightsheetsModal();
+    });
+
+    // Escape key to close modals
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            closeCmdModal();
+            closeFlightsheetsModal();
+        }
+    });
 
     // Expand / collapse action status box
     const actionBox = document.getElementById("action-output");
@@ -30,49 +109,367 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-	// 👇 THIS is what makes GPU stick
+    // 👇 restore last mode
     setActionMode(currentActionMode);
+
+    // ✅ MUST be async
+    await loadConfig();
+
+    // Now API is guaranteed to be set
+    initWebSocket();
+    fetchRigsOnce();
 });
+// =====================================================
+// COMPREHENSIVE DATA ACCESS HELPER
+// =====================================================
 
-function fmtRateHs(totalHs, label) {
-    if (!totalHs || totalHs <= 0) {
-        return null;
+const DataHelper = {
+    // ================= SYSTEM DATA =================
+    
+    // Get CPU temperature
+    getCpuTemp: (data) => {
+        return data.cpu_temp !== null ? Number(data.cpu_temp) : null;
+    },
+    
+    // Get CPU usage percentage
+    getCpuUsage: (data) => {
+        return data.cpu_usage !== undefined ? data.cpu_usage : "--";
+    },
+    
+    // Get load averages
+    getLoad: (data, interval = "1m") => {
+        return data.load?.[interval] ?? "--";
+    },
+    
+    // Get memory usage
+    getMemory: (data) => {
+        if (data.memory?.total_mb && data.memory.used_mb !== undefined) {
+            return {
+                used_gb: (data.memory.used_mb / 1024).toFixed(1),
+                total_gb: (data.memory.total_mb / 1024).toFixed(1),
+                string: `${(data.memory.used_mb / 1024).toFixed(1)} / ${(data.memory.total_mb / 1024).toFixed(1)}`
+            };
+        }
+        return { used_gb: "--", total_gb: "--", string: "--" };
+    },
+    
+    // ================= GPU DATA =================
+    
+    // Get all GPUs
+    getGpus: (data) => {
+        return Array.isArray(data.gpus) ? data.gpus : [];
+    },
+    
+    // Get primary/first GPU
+    getPrimaryGpu: (data) => {
+        const gpus = DataHelper.getGpus(data);
+        return gpus[0] || {};
+    },
+    
+    // Get GPU temperature
+    getGpuTemp: (gpu) => {
+        return gpu.temp !== undefined ? Number(gpu.temp) : null;
+    },
+    
+    // Get GPU utilization
+    getGpuUtil: (gpu) => {
+        return gpu.util ?? "--";
+    },
+    
+    // Get GPU power
+    getGpuPower: (gpu) => {
+        return gpu.power_watts !== undefined ? gpu.power_watts.toFixed(1) : "--";
+    },
+    
+    // Get GPU fan speed
+    getGpuFan: (gpu) => {
+        return gpu.fan_percent ?? "--";
+    },
+    
+    // Get GPU core clock
+    getGpuCoreClock: (gpu) => {
+        return gpu.sm_clock ?? "--";
+    },
+    
+    // Get GPU memory clock
+    getGpuMemClock: (gpu) => {
+        return gpu.mem_clock ?? "--";
+    },
+    
+    // Get GPU VRAM
+    getGpuVram: (gpu) => {
+        if (gpu.vram_used !== undefined && gpu.vram_total !== undefined) {
+            return {
+                used_gb: (gpu.vram_used / 1024).toFixed(1),
+                total_gb: (gpu.vram_total / 1024).toFixed(1),
+                string: `${(gpu.vram_used / 1024).toFixed(1)} / ${(gpu.vram_total / 1024).toFixed(1)}`
+            };
+        }
+        return { used_gb: "--", total_gb: "--", string: "--" };
+    },
+    
+    // Get total GPU power consumption
+    getTotalGpuPower: (data) => {
+        const gpus = DataHelper.getGpus(data);
+        return gpus.reduce((total, gpu) => {
+            return total + (typeof gpu.power_watts === "number" ? gpu.power_watts : 0);
+        }, 0);
+    },
+    
+    // ================= SERVICE DATA =================
+    
+    // Get service status
+    getServiceStatus: (data, service) => {
+        const serviceData = data[service];
+        return {
+            state: serviceData?.state || "unknown",
+            isActive: serviceData?.state === "active",
+            uptime: serviceData?.uptime || 0
+        };
+    },
+    
+    // ================= DOCKER DATA =================
+    
+    // Get docker containers
+    getDockerContainers: (data) => {
+        return Array.isArray(data.docker) ? data.docker : [];
+    },
+    
+    // ================= MINER DATA =================
+    
+    // Miner key to display name mapping
+    MINER_NAMES: {
+        "miner_bzminer": "BzMiner",
+        "miner_xmrig": "XMRig", 
+        "miner_rigel": "Rigel",
+        "miner_lolminer": "lolMiner",
+        "miner_srbminer": "SRBMiner",
+        "miner_wildrig": "WildRig",
+        "miner_onezerominer": "OneZeroMiner",
+        "miner_gminer": "GMiner"
+    },
+    
+    // All miner keys
+    ALL_MINER_KEYS: [
+        "miner_bzminer", "miner_xmrig", "miner_rigel", 
+        "miner_lolminer", "miner_srbminer", "miner_wildrig",
+        "miner_onezerominer", "miner_gminer"
+    ],
+    
+    // Get miner display name
+    getMinerDisplayName: (minerKey) => {
+        return DataHelper.MINER_NAMES[minerKey] || minerKey;
+    },
+    
+    // Get miner data
+    getMiner: (data, minerKey) => {
+        return data[minerKey] || null;
+    },
+    
+    // Check if miner is active
+    isMinerActive: (data, minerKey) => {
+        const miner = DataHelper.getMiner(data, minerKey);
+        return miner && miner.status === "ok" && miner.algorithms && miner.algorithms.length > 0;
+    },
+    
+    // Get all active miners
+    getActiveMiners: (data) => {
+        return DataHelper.ALL_MINER_KEYS
+            .filter(key => DataHelper.isMinerActive(data, key))
+            .map(key => ({
+                key: key,
+                name: DataHelper.getMinerDisplayName(key),
+                data: DataHelper.getMiner(data, key)
+            }));
+    },
+    
+    // Get miner algorithms
+    getMinerAlgorithms: (data, minerKey) => {
+        const miner = DataHelper.getMiner(data, minerKey);
+        if (!miner || miner.status !== "ok") return [];
+        return miner.algorithms || [];
+    },
+    
+    // Get all algorithms from all miners
+    getAllAlgorithms: (data) => {
+        const algorithms = [];
+        const activeMiners = DataHelper.getActiveMiners(data);
+        activeMiners.forEach(miner => {
+            if (miner.data.algorithms) {
+                miner.data.algorithms.forEach(algo => {
+                    algorithms.push({
+                        ...algo,
+                        minerKey: miner.key,
+                        minerName: miner.name,
+                        minerUptime: miner.data.uptime_s
+                    });
+                });
+            }
+        });
+        return algorithms;
+    },
+    
+    // ================= ALGORITHM DATA =================
+    
+    // Get algorithm name
+    getAlgorithmName: (algo) => {
+        return algo.algorithm || "--";
+    },
+    
+    // Get hashrate in H/s
+    getHashrateHS: (algo) => {
+        return algo.hashrate_hs || 0;
+    },
+    
+    // Get CPU hashrate (for SRBMiner)
+    getCpuHashrateHS: (algo) => {
+        return algo.cpu_hashrate_hs || 0;
+    },
+    
+    // Get GPU hashrate (for SRBMiner)
+    getGpuHashrateHS: (algo) => {
+        return algo.gpu_hashrate_hs || 0;
+    },
+    
+    // Get total hashrate (CPU + GPU for SRBMiner)
+    getTotalHashrateHS: (algo) => {
+        const baseHashrate = DataHelper.getHashrateHS(algo);
+        if (baseHashrate > 0) return baseHashrate;
+        
+        // Fallback: sum CPU and GPU for SRBMiner
+        const cpuHashrate = DataHelper.getCpuHashrateHS(algo);
+        const gpuHashrate = DataHelper.getGpuHashrateHS(algo);
+        return cpuHashrate + gpuHashrate;
+    },
+    
+    // Get accepted shares
+    getAcceptedShares: (algo) => {
+        return algo.accepted_shares;
+    },
+    
+    // Get rejected shares
+    getRejectedShares: (algo) => {
+        return algo.rejected_shares;
+    },
+    
+    // Get pool
+    getPool: (algo) => {
+        return algo.pool || "";
+    },
+    
+    // Get workers
+    getWorkers: (algo) => {
+        return algo.workers;
+    },
+    
+    // Get CPU workers (SRBMiner)
+    getCpuWorkers: (algo) => {
+        return algo.cpu_workers;
+    },
+    
+    // Get GPU workers (SRBMiner)
+    getGpuWorkers: (algo) => {
+        return algo.gpu_workers;
+    },
+    
+    // Get pool hashrate (Rigel)
+    getPoolHashrateHS: (algo) => {
+        return algo.pool_hashrate_hs || 0;
+    },
+    
+    // ================= STATISTICS =================
+    
+    // Get total hashrate for all miners
+    getTotalHashrateAllMiners: (data) => {
+        return DataHelper.getAllAlgorithms(data).reduce((total, algo) => {
+            return total + DataHelper.getTotalHashrateHS(algo);
+        }, 0);
+    },
+    
+    // Get hashrate by algorithm
+    getHashrateByAlgorithm: (data) => {
+        const algoMap = {};
+        DataHelper.getAllAlgorithms(data).forEach(algo => {
+            const algoName = DataHelper.getAlgorithmName(algo);
+            const hashrate = DataHelper.getTotalHashrateHS(algo);
+            
+            if (!algoMap[algoName]) {
+                algoMap[algoName] = {
+                    totalHashrate: 0,
+                    miners: []
+                };
+            }
+            
+            algoMap[algoName].totalHashrate += hashrate;
+            
+            // Add miner details
+            const minerName = algo.minerName;
+            
+            // For SRBMiner, break down CPU/GPU
+            if (algo.minerKey === "miner_srbminer") {
+                const cpuHashrate = DataHelper.getCpuHashrateHS(algo);
+                const gpuHashrate = DataHelper.getGpuHashrateHS(algo);
+                
+                if (cpuHashrate > 0) {
+                    algoMap[algoName].miners.push(`CPU ${fmtRateHs(cpuHashrate, "")} ${minerName}`);
+                }
+                if (gpuHashrate > 0) {
+                    algoMap[algoName].miners.push(`GPU ${fmtRateHs(gpuHashrate, "")} ${minerName}`);
+                }
+            } else {
+                algoMap[algoName].miners.push(`${fmtRateHs(hashrate, "")} ${minerName}`);
+            }
+        });
+        
+        return algoMap;
+    },
+    
+    // ================= FORMATTING HELPERS =================
+    
+    // Get formatted temperature with CSS class
+    getFormattedTemp: (temp, type = "cpu") => {
+        if (temp === null || temp === undefined) return { value: "--", class: "status-good" };
+        
+        const value = temp.toFixed(0);
+        let className = "status-good";
+        
+        if (type === "cpu" || type === "gpu") {
+            if (temp >= 75) className = "status-hot";
+            else if (temp >= 60) className = "status-warm";
+        }
+        
+        return { value, class: className };
+    },
+    
+    // Get formatted fan speed with CSS class
+    getFormattedFan: (fanPercent) => {
+        if (fanPercent === "--" || fanPercent === undefined) {
+            return { value: "--", class: "status-good" };
+        }
+        
+        let className = "status-good";
+        if (fanPercent >= 80) className = "status-hot";
+        else if (fanPercent >= 50) className = "status-warm";
+        
+        return { value: fanPercent, class: className };
+    },
+    
+    // Get service status with CSS class
+    getFormattedService: (serviceStatus) => {
+        return {
+            text: "CPU", // Could be "CPU" or "GPU" based on service
+            class: serviceStatus.isActive ? "service-ok" : "service-bad"
+        };
     }
+};
 
-    if (totalHs >= 1e6) {
-        return `${(totalHs / 1e6).toFixed(2)} MH/s ${label}`;
-    }
-    if (totalHs >= 1e3) {
-        return `${(totalHs / 1e3).toFixed(2)} kH/s ${label}`;
-    }
-    return `${totalHs.toFixed(0)} H/s ${label}`;
-}
+// =====================================================
+// NETWORK COMMUNICATION (HTTP/WebSocket)
+// =====================================================
 
-
-function fmtXmrig(hs) {
-    return hs > 0
-        ? `${(hs / 1e3).toFixed(1)} kH/s`
-        : null;
-}
-
-/* -------------------- Uptime Formatter -------------------- */
-function fmtUptime(sec) {
-    if (!sec || sec <= 0) return "--";
-    sec = Math.floor(sec);
-
-    const d = Math.floor(sec / 86400);
-    const h = Math.floor((sec % 86400) / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-
-    if (d > 0) return `${d}d ${h}h`;
-    if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
-}
-
-/* -------------------- WebSocket -------------------- */
 function getWebSocketUrl() {
     const proto = location.protocol === "https:" ? "wss://" : "ws://";
-    return proto + location.host + "/dashboard/ws";
+    return proto + location.host + `${API}/ws`;
 }
 
 function initWebSocket() {
@@ -144,204 +541,532 @@ function initWebSocket() {
     ws.onclose = () => setTimeout(initWebSocket, 5000);
 }
 
-/* -------------------- HTTP Fallback -------------------- */
 async function fetchRigsOnce() {
-    try {
-        const res = await fetch("/dashboard/rigs");
-        if (!res.ok) return;
-        rigsState = await res.json();
-        lastUpdateTs = Date.now() / 1000;
-        render();
-    } catch {}
-}
-
-function toggleSelectAll() {
-
-    const rigNames = Object.keys(rigsState)
-        .filter(name => name !== "rigs");
-
-    if (rigNames.length === 0) return;
-
-    const eligible = rigNames.filter(name => {
-        const d = rigsState[name]?.data ?? {};
-        const cpuActive = d.cpu_service?.state === "active";
-        const gpuActive = d.gpu_service?.state === "active";
-		
-		if (currentActionMode === "all") return true;
-        
-		if (currentActionMode === "cpu") {
-            return cpuActive;
-        }
-
-        if (currentActionMode === "gpu") {
-            return gpuActive;
-        }
-    });
-
-    if (eligible.length === 0) return;
-
-    const allSelected = eligible.every(name => selectedRigs.has(name));
-
-    if (allSelected) {
-        eligible.forEach(name => selectedRigs.delete(name));
-    } else {
-        eligible.forEach(name => selectedRigs.add(name));
-    }
-
+    const res = await fetch(`${API}/rigs`);
+    if (!res.ok) return;
+    rigsState = await res.json();
+    lastUpdateTs = Date.now() / 1000;
     render();
 }
+
+// =====================================================
+// FORMATTING UTILITIES
+// =====================================================
 
 function hasPositiveRate(hs) {
     return typeof hs === "number" && hs > 0;
 }
 
-function updateActionStats() {
-    const wattsEl = document.getElementById("stat-gpu-watts");
-    const hashEl  = document.getElementById("stat-hashrate");
-
-    if (!wattsEl || !hashEl) return;
-
-    let totalWatts = 0;
-
-    // Per-miner totals (H/s)
-    const minerTotals = {
-        bzminer: 0,
-        xmrig: 0,
-        rigel: 0,
-		lolminer: 0,
-        srb_gpu: 0,
-        srb_cpu: 0,
-		wildrig: 0,
-		onezerominer: 0,
-		gminer: 0,
-    };
-
-    // Scope:
-    // - selected rigs if any
-    // - otherwise all rigs
-    const rigNames =
-        selectedRigs.size > 0
-            ? Array.from(selectedRigs)
-            : Object.keys(rigsState).filter(n => n !== "rigs");
-
-    rigNames.forEach(name => {
-        const d = rigsState[name]?.data;
-        if (!d) return;
-
-        /* ---------------- GPU watts ---------------- */
-        if (Array.isArray(d.gpus)) {
-            d.gpus.forEach(gpu => {
-                if (typeof gpu.power_watts === "number") {
-                    totalWatts += gpu.power_watts;
-                }
-            });
-        }
-
-        /* ---------------- Miners ---------------- */
-
-        // BzMiner
-        if (d.miner_bzminer) {
-            if (typeof d.miner_bzminer.total_hs === "number") {
-                minerTotals.bzminer += d.miner_bzminer.total_hs;
-            } else if (typeof d.miner_bzminer.total_mhs === "number") {
-                minerTotals.bzminer += d.miner_bzminer.total_mhs * 1e6;
-            }
-        }
-
-        // XMRig
-        if (typeof d.miner_xmrig?.total_hs === "number") {
-            minerTotals.xmrig += d.miner_xmrig.total_hs;
-        }
-
-        // Rigel
-        if (typeof d.miner_rigel?.total_hs === "number") {
-            minerTotals.rigel += d.miner_rigel.total_hs;
-        }
-
-		// lolMiner
-        if (typeof d.miner_lolminer?.total_hs === "number") {
-            minerTotals.lolminer += d.miner_lolminer.total_hs;
-        }
-
-        // SRBMiner (split)
-        if (typeof d.miner_srbminer?.gpu_hs === "number") {
-            minerTotals.srb_gpu += d.miner_srbminer.gpu_hs;
-        }
-        if (typeof d.miner_srbminer?.cpu_hs === "number") {
-            minerTotals.srb_cpu += d.miner_srbminer.cpu_hs;
-        }
-		// wildrig
-        if (typeof d.miner_wildrig?.total_hs === "number") {
-            minerTotals.wildrig += d.miner_wildrig.total_hs;
-        }
-        // onezerominer
-        if (typeof d.miner_onezerominer?.total_hs === "number") {
-            minerTotals.onezerominer += d.miner_onezerominer.total_hs;
-        }
-        // GMiner
-        if (typeof d.miner_gminer?.total_hs === "number") {
-                minerTotals.gminer += d.miner_gminer.total_hs;
-        }
-    });
-
-    /* ---------------- Render GPU watts ---------------- */
-    wattsEl.textContent =
-        totalWatts > 0
-            ? `GPU W: ${Math.round(totalWatts)}`
-            : "GPU W: --";
-
-    /* ---------------- Render miner totals ---------------- */
-    const minerParts = [];
-
-    if (minerTotals.bzminer > 0) {
-        minerParts.push(`BzMiner ${fmtRateHs(minerTotals.bzminer, "")}`);
+function fmtRateHs(totalHs, label) {
+    if (!totalHs || totalHs <= 0) {
+        return null;
     }
 
-    if (minerTotals.xmrig > 0) {
-        minerParts.push(`XMRig ${fmtRateHs(minerTotals.xmrig, "")}`);
+    if (totalHs >= 1e6) {
+        return `${(totalHs / 1e6).toFixed(2)} MH/s ${label}`;
     }
-
-    if (minerTotals.rigel > 0) {
-        minerParts.push(`Rigel ${fmtRateHs(minerTotals.rigel, "")}`);
+    if (totalHs >= 1e3) {
+        return `${(totalHs / 1e3).toFixed(2)} kH/s ${label}`;
     }
-
-	if (minerTotals.lolminer > 0) {
-        minerParts.push(`lolMiner ${fmtRateHs(minerTotals.lolminer, "")}`);
-    }
-
-    if (minerTotals.srb_gpu > 0 || minerTotals.srb_cpu > 0) {
-        const parts = [];
-
-        if (minerTotals.srb_gpu > 0) {
-            parts.push(`GPU ${fmtRateHs(minerTotals.srb_gpu, "")}`);
-        }
-        if (minerTotals.srb_cpu > 0) {
-            parts.push(`CPU ${fmtRateHs(minerTotals.srb_cpu, "")}`);
-        }
-
-        minerParts.push(`SRBMiner ${parts.join(" | ")}`);
-    }
-	
-	if (minerTotals.wildrig > 0) {
-        minerParts.push(`Wildrig ${fmtRateHs(minerTotals.wildrig, "")}`);
-    }
-	
-	if (minerTotals.onezerominer > 0) {
-        minerParts.push(`OneZeroMiner ${fmtRateHs(minerTotals.onezerominer, "")}`);
-    }
-    if (minerTotals.gminer > 0) {
-        minerParts.push(`GMiner ${fmtRateHs(minerTotals.gminer, "")}`);
-    }
-
-
-    hashEl.textContent =
-        minerParts.length > 0
-            ? minerParts.join(" | ")
-            : "--";
+    return `${totalHs.toFixed(0)} H/s ${label}`;
 }
 
+function fmtShares(accepted, rejected) {
+    if (accepted === undefined && rejected === undefined) return "--";
+    
+    if (accepted !== undefined && rejected !== undefined) {
+        return `${accepted}/${rejected}`;
+    }
+    
+    if (accepted !== undefined) {
+        return accepted.toString();
+    }
+    
+    return "--";
+}
 
-/* -------------------- Render -------------------- */
+function fmtXmrig(hs) {
+    return hs > 0
+        ? `${(hs / 1e3).toFixed(1)} kH/s`
+        : null;
+}
+
+function fmtUptime(sec) {
+    if (!sec || sec <= 0) return "--";
+    sec = Math.floor(sec);
+
+    const d = Math.floor(sec / 86400);
+    const h = Math.floor((sec % 86400) / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+
+    if (d > 0) return `${d}d ${h}h`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+}
+
+// =====================================================
+// Simple Column Hiding System
+// =====================================================
+function loadColumnState() {
+    const saved = localStorage.getItem('hiddenColumns');
+    if (saved) {
+        try {
+            const state = JSON.parse(saved);
+            // Clear current set and add saved columns
+            hiddenColumns.clear();
+            state.forEach(col => {
+                // Only add valid column indices (1-15 for data columns)
+                if (col >= 1 && col <= 15) {
+                    hiddenColumns.add(col);
+                }
+            });
+            console.log('Loaded hidden columns:', Array.from(hiddenColumns));
+        } catch(e) {
+            console.error('Failed to load column state:', e);
+            // Clear invalid storage
+            localStorage.removeItem('hiddenColumns');
+        }
+    }
+}
+
+function saveColumnState() {
+    localStorage.setItem('hiddenColumns', JSON.stringify(Array.from(hiddenColumns)));
+}
+
+function resetHiddenColumns() {
+    // Clear all hidden columns
+    hiddenColumns.clear();
+    
+    // Show all columns
+    const headerGrid = document.querySelector('.rig-header-grid');
+    const rigRows = document.querySelectorAll('.rig-row .rig-main');
+    
+    if (headerGrid) {
+        // Show all header columns
+        Array.from(headerGrid.children).forEach((cell, index) => {
+            cell.classList.remove('column-hidden');
+            cell.style.opacity = '1';
+        });
+    }
+    
+    // Show all data columns
+    rigRows.forEach(row => {
+        Array.from(row.children).forEach(cell => {
+            cell.classList.remove('column-hidden');
+        });
+    });
+    
+    // Clear saved state
+    localStorage.removeItem('hiddenColumns');
+    
+    // Update indicator
+    updateColumnResetIndicator();
+    
+    console.log('All columns reset');
+}
+
+function resetAllHiddenColumns() {
+    if (hiddenColumns.size === 0) return; // Nothing to reset
+    
+    // Clear all hidden columns
+    hiddenColumns.clear();
+    
+    // Show all columns
+    const headerGrid = document.querySelector('.rig-header-grid');
+    const rigRows = document.querySelectorAll('.rig-row .rig-main');
+    
+    if (headerGrid) {
+        // Show all header columns
+        Array.from(headerGrid.children).forEach((cell, index) => {
+            cell.classList.remove('column-hidden');
+            cell.style.opacity = '1';
+        });
+    }
+    
+    // Show all data columns
+    rigRows.forEach(row => {
+        Array.from(row.children).forEach(cell => {
+            cell.classList.remove('column-hidden');
+        });
+    });
+    
+    // Clear saved state
+    localStorage.removeItem('hiddenColumns');
+    
+    console.log('All columns reset');
+}
+
+function applyHiddenColumnsToDOM() {
+    const headerGrid = document.querySelector('.rig-header-grid');
+    const rigRows = document.querySelectorAll('.rig-row .rig-main');
+    
+    if (!headerGrid) return;
+    
+    // Apply to header
+    Array.from(headerGrid.children).forEach((cell, index) => {
+        if (hiddenColumns.has(index)) {
+            cell.classList.add('column-hidden');
+            cell.style.opacity = '0.5';
+        } else {
+            cell.classList.remove('column-hidden');
+            cell.style.opacity = '1';
+        }
+    });
+    
+    // Apply to all existing data rows
+    rigRows.forEach(row => {
+        Array.from(row.children).forEach((cell, index) => {
+            if (hiddenColumns.has(index)) {
+                cell.classList.add('column-hidden');
+            } else {
+                cell.classList.remove('column-hidden');
+            }
+        });
+    });
+    
+    console.log('Hidden columns applied:', Array.from(hiddenColumns));
+}
+
+function applyHeaderVisibility() {
+    const headerGrid = document.querySelector('.rig-header-grid');
+    if (!headerGrid) return;
+    
+    // Apply hidden state to header cells
+    Array.from(headerGrid.children).forEach((cell, index) => {
+        if (hiddenColumns.has(index)) {
+            cell.classList.add('column-hidden');
+            cell.style.opacity = '0.5';
+        } else {
+            cell.classList.remove('column-hidden');
+            cell.style.opacity = '1';
+        }
+    });
+}
+
+function toggleColumnVisibility(columnIndex) {
+    const headerGrid = document.querySelector('.rig-header-grid');
+    if (!headerGrid) return;
+    
+    if (hiddenColumns.has(columnIndex)) {
+        // Show the column
+        hiddenColumns.delete(columnIndex);
+        showColumn(columnIndex);
+    } else {
+        // Hide the column
+        hiddenColumns.add(columnIndex);
+        hideColumn(columnIndex);
+    }
+    
+    saveColumnState();
+}
+
+function hideColumn(columnIndex) {
+    // Hide header
+    const headerGrid = document.querySelector('.rig-header-grid');
+    if (headerGrid && headerGrid.children[columnIndex]) {
+        headerGrid.children[columnIndex].classList.add('column-hidden');
+        headerGrid.children[columnIndex].style.opacity = '0.5'; // Visual feedback
+    }
+    
+    // Hide in all data rows
+    document.querySelectorAll('.rig-row .rig-main').forEach(row => {
+        if (row.children[columnIndex]) {
+            row.children[columnIndex].classList.add('column-hidden');
+        }
+    });
+}
+
+function showColumn(columnIndex) {
+    // Show header
+    const headerGrid = document.querySelector('.rig-header-grid');
+    if (headerGrid && headerGrid.children[columnIndex]) {
+        headerGrid.children[columnIndex].classList.remove('column-hidden');
+        headerGrid.children[columnIndex].style.opacity = '1';
+    }
+    
+    // Show in all data rows
+    document.querySelectorAll('.rig-row .rig-main').forEach(row => {
+        if (row.children[columnIndex]) {
+            row.children[columnIndex].classList.remove('column-hidden');
+        }
+    });
+}
+
+function resetAllColumns() {
+    // Show all columns
+    const headerGrid = document.querySelector('.rig-header-grid');
+    if (!headerGrid) return;
+    
+    hiddenColumns.clear();
+    
+    for (let i = 1; i < headerGrid.children.length - 1; i++) {
+        showColumn(i);
+    }
+    
+    saveColumnState();
+}
+
+function saveColumnState() {
+    localStorage.setItem('hiddenColumns', JSON.stringify(Array.from(hiddenColumns)));
+}
+
+function loadColumnState() {
+    const saved = localStorage.getItem('hiddenColumns');
+    if (saved) {
+        try {
+            const state = JSON.parse(saved);
+            state.forEach(col => hiddenColumns.add(col));
+        } catch(e) {
+            console.error('Failed to load column state:', e);
+        }
+    }
+}
+
+function setupHeaderClickHandlers() {
+    const headerGrid = document.querySelector('.rig-header-grid');
+    if (!headerGrid) return;
+    
+    // 1. Make "Name" header clickable to reset hidden columns
+    const nameHeader = headerGrid.children[0];
+    if (nameHeader) {
+        // Find the text part of the Name header (not the reset button)
+        const nameText = nameHeader.textContent.replace('⟳', '').trim();
+        nameHeader.innerHTML = `
+            <span class="reset-btn" id="btn-reset" title="Hard reset rigs">⟳</span>
+            <span class="name-header-text">${nameText}</span>
+        `;
+        
+        const nameTextSpan = nameHeader.querySelector('.name-header-text');
+        if (nameTextSpan) {
+            nameTextSpan.style.cursor = 'pointer';
+            nameTextSpan.title = 'Click to show all hidden columns';
+            nameTextSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                resetAllHiddenColumns();
+            });
+        }
+    }
+    
+    // 2. Make all other metric headers clickable to hide/show
+    Array.from(headerGrid.children).forEach((cell, index) => {
+        if (index > 0 && index < headerGrid.children.length - 1) {
+            cell.style.cursor = 'pointer';
+            cell.title = 'Click to hide/show column';
+            cell.addEventListener('click', () => toggleColumnVisibility(index));
+            
+            // Visual indicator for hidden columns
+            if (hiddenColumns.has(index)) {
+                cell.classList.add('column-hidden');
+                cell.style.opacity = '0.5';
+            }
+        }
+    });
+}
+
+// =====================================================
+// FLIGHTSHEET MANAGEMENT
+// =====================================================
+
+const v = id => document.querySelector(id)?.value ?? "";
+const c = id => document.querySelector(id)?.checked ?? false;
+
+function getFlightsheetName() {
+    const el = document.getElementById("fs-name");
+    if (!el) return "";
+
+    return el.value
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9\-]/g, "");
+}
+
+function collectFlightsheetEntries() {
+    const cmd = document.getElementById("fs-raw").value.trim();
+
+    // 🔴 ADD VALIDATION
+    if (!cmd) {
+        alert("Cannot save empty flightsheet! Please enter a command in the flightsheet editor.");
+        throw new Error("Empty command");
+    }
+
+    console.log("Saving flightsheet with command length:", cmd.length);
+    
+    return [
+        { key: "RAW_COMMAND", gpu: 0, value: cmd }
+    ];
+}
+
+async function loadFlightsheets() {
+    const res = await fetch(`${API}/api/flightsheets`);
+    if (!res.ok) {
+        alert("Failed to load flightsheets");
+        return;
+    }
+
+    flightsheets = await res.json();
+    renderFlightsheets();
+}
+
+function renderFlightsheets() {
+    const list = document.getElementById("fs-list");
+    list.innerHTML = "";
+
+    for (const fs of flightsheets) {
+        const row = document.createElement("div");
+        row.className = "fs-item";
+        row.textContent = fs.FlightsheetId;
+
+        row.addEventListener("click", () => {
+            // clear previous selection
+            document
+                .querySelectorAll("#fs-list .fs-item")
+                .forEach(e => e.classList.remove("selected"));
+
+            row.classList.add("selected");
+
+            selectedFlightsheetId = fs.FlightsheetId;
+
+            // 🔴 THIS IS THE FIX
+            document.getElementById("fs-name").value = fs.FlightsheetId;
+            document.getElementById("fs-raw").value = fs.Value || "";
+        });
+
+        list.appendChild(row);
+    }
+}
+
+async function saveFlightsheet(flightsheetId, entries) {
+    // No showAlert parameter - never shows alerts
+    if (!flightsheetId) {
+        throw new Error("Flightsheet name is required");
+    }
+
+    if (!Array.isArray(entries) || entries.length === 0) {
+        throw new Error("Flightsheet has no entries to save");
+    }
+
+    const res = await fetch(
+        `${API}/api/flightsheets/${encodeURIComponent(flightsheetId)}`,
+        {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ entries })
+        }
+    );
+
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        const errorMsg = errorData.detail || errorData.message || "Failed to save flightsheet";
+        throw new Error(errorMsg);
+    }
+
+    return await res.json();
+}
+
+async function saveFlightsheetFromDialog() {
+    const flightsheetId = getFlightsheetName();
+    
+    try {
+        const entries = collectFlightsheetEntries();
+        await saveFlightsheet(flightsheetId, entries);
+        
+		loadFlightsheets(); // Refresh list        
+        alert(`Flightsheet "${flightsheetId}" saved successfully!`);
+        
+    } catch (err) {
+        alert(`Error saving flightsheet: ${err.message}`);
+    }
+}
+
+function applyFlightsheet() {
+    const raw = document.getElementById("fs-raw").value.trim();
+
+    if (!raw) {
+        alert("Flightsheet is empty");
+        return;
+    }
+
+    // ---- wrappers (different commands based on mode) ----
+    let firstLine, lastLine, cmdLine;
+    
+    switch(currentActionMode) {
+        case "all":
+            // Apply to both CPU and GPU
+            firstLine = "tee /home/user/rig-all.conf > /dev/null <<'EOF'";
+            lastLine = "EOF";
+            cmdLine = "sudo systemctl restart docker_events_all";
+            break;
+            
+        case "cpu":
+            // Apply only to CPU
+            firstLine = "tee /home/user/rig-cpu.conf > /dev/null <<'EOF'";
+            lastLine = "EOF";
+            cmdLine = "sudo systemctl restart docker_events_cpu";
+            break;
+            
+        case "gpu":
+            // Apply only to GPU (original behavior)
+            firstLine = "tee /home/user/rig-gpu.conf > /dev/null <<'EOF'";
+            lastLine = "EOF";
+            cmdLine = "sudo systemctl restart docker_events_gpu";
+            break;
+            
+        default:
+            // Fallback to GPU mode
+            firstLine = "tee /home/user/rig-gpu.conf > /dev/null <<'EOF'";
+            lastLine = "EOF";
+            cmdLine = "sudo systemctl restart docker_events_gpu";
+    }
+
+    const finalText = [
+        firstLine,
+        raw,
+        lastLine,
+        cmdLine
+    ].join("\n");
+
+    document.getElementById("cmd-input").value = finalText;
+
+    closeFlightsheetsModal();
+    openCmdModal();
+}
+
+async function deleteFlightsheet() {
+    if (!selectedFlightsheetId) {
+        alert("No flightsheet selected");
+        return;
+    }
+    
+    if (!confirm(`Delete flightsheet "${selectedFlightsheetId}"?`)) {
+        return;
+    }
+    
+    try {
+        const res = await fetch(
+            `${API}/api/flightsheets/${encodeURIComponent(selectedFlightsheetId)}`,
+            { method: "DELETE" }
+        );
+        
+        if (!res.ok) throw new Error("Failed to delete");
+        
+		loadFlightsheets(); // Refresh list        
+        alert("Flightsheet deleted");
+       
+        // Clear form
+        document.getElementById("fs-name").value = "";
+        document.getElementById("fs-raw").value = "";
+        selectedFlightsheetId = null;
+        
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// =====================================================
+// RENDER FUNCTIONS (UI UPDATES)
+// =====================================================
+
 function render() {
     if (resetInProgress) return;
 
@@ -349,218 +1074,226 @@ function render() {
     container.innerHTML = "";
 
     const rigNames = Object.keys(rigsState)
-    .filter(name => name !== "rigs")
-    .sort();
+        .filter(name => name !== "rigs")
+        .sort();
 
     rigNames.forEach(rigName => {
         const entry = rigsState[rigName];
         const d = entry.data ?? {};
-		const safeId = rigName.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const safeId = rigName.replace(/[^a-zA-Z0-9_-]/g, "_");
         const open = popoverState[safeId] === true;
+		
+		// Get all active miners
+        const activeMiners = DataHelper.getActiveMiners(d);
 
         /* ---------------- CPU ---------------- */
-        const cpuTemp = d.cpu_temp !== null ? Number(d.cpu_temp) : null;
-        const cpuTempStr = cpuTemp !== null ? cpuTemp.toFixed(0) : "--";
-
-        let cpuTempClass = "status-good";
-        if (cpuTemp !== null) {
-            if (cpuTemp >= 75) cpuTempClass = "status-hot";
-            else if (cpuTemp >= 60) cpuTempClass = "status-warm";
-        }
-
-        const cpuUtil = d.cpu_usage !== undefined ? d.cpu_usage.toFixed(0) : "--";
-        const load1  = d.load?.["1m"]  ?? "--";
-        const load5  = d.load?.["5m"]  ?? "--";
-        const load15 = d.load?.["15m"] ?? "--";
-
+        const cpuTemp = DataHelper.getCpuTemp(d);
+        const cpuTempFormatted = DataHelper.getFormattedTemp(cpuTemp, "cpu");
+        const cpuTempStr = cpuTempFormatted.value;
+        const cpuTempClass = cpuTempFormatted.class;
+        
+        const cpuUtil = DataHelper.getCpuUsage(d);
+        const load1 = DataHelper.getLoad(d, "1m");
+        const load5 = DataHelper.getLoad(d, "5m");
+        const load15 = DataHelper.getLoad(d, "15m");
+        
         /* ---------------- RAM ---------------- */
-        let ramStr = "--";
-        if (d.memory?.total_mb && d.memory.used_mb !== undefined) {
-            ramStr = `${(d.memory.used_mb / 1024).toFixed(1)} / ${(d.memory.total_mb / 1024).toFixed(1)}`;
-        }
-
+        const memory = DataHelper.getMemory(d);
+        const ramStr = memory.string;
+        
         /* ---------------- GPU ---------------- */
-        const gpu = d.gpus?.[0] ?? {};
-        const gpuTemp = gpu.temp !== undefined ? Number(gpu.temp) : null;
-        const gpuTempStr = gpuTemp !== null ? gpuTemp.toFixed(0) : "--";
-
-        let gpuTempClass = "status-good";
-        if (gpuTemp !== null) {
-            if (gpuTemp >= 75) gpuTempClass = "status-hot";
-            else if (gpuTemp >= 60) gpuTempClass = "status-warm";
-        }
-
-        const gpuUtil  = gpu.util ?? "--";
-        const gpuPower = gpu.power_watts !== undefined ? gpu.power_watts.toFixed(1) : "--";
-        const gpuFan   = gpu.fan_percent ?? "--";
-        const coreMHz  = gpu.sm_clock ?? "--";
-        const memMHz   = gpu.mem_clock ?? "--";
-
-        let vramGB = "--";
-        if (gpu.vram_used !== undefined && gpu.vram_total !== undefined) {
-            vramGB = `${(gpu.vram_used / 1024).toFixed(1)} / ${(gpu.vram_total / 1024).toFixed(1)}`;
-        }
-
-        let fanClass = "status-good";
-        if (gpuFan !== "--") {
-            if (gpuFan >= 80) fanClass = "status-hot";
-            else if (gpuFan >= 50) fanClass = "status-warm";
-        }
-
+        const primaryGpu = DataHelper.getPrimaryGpu(d);
+        const gpuTemp = DataHelper.getGpuTemp(primaryGpu);
+        const gpuTempFormatted = DataHelper.getFormattedTemp(gpuTemp, "gpu");
+        const gpuTempStr = gpuTempFormatted.value;
+        const gpuTempClass = gpuTempFormatted.class;
+        
+        const gpuUtil = DataHelper.getGpuUtil(primaryGpu);
+        const gpuPower = DataHelper.getGpuPower(primaryGpu);
+        const gpuFan = DataHelper.getGpuFan(primaryGpu);
+        const fanFormatted = DataHelper.getFormattedFan(gpuFan);
+        const fanClass = fanFormatted.class;
+        
+        const coreMHz = DataHelper.getGpuCoreClock(primaryGpu);
+        const memMHz = DataHelper.getGpuMemClock(primaryGpu);
+        
+        const vram = DataHelper.getGpuVram(primaryGpu);
+        const vramGB = vram.string;
+        
         /* ---------------- Services ---------------- */
-        const cpuServiceClass = d.cpu_service?.state === "active" ? "service-ok" : "service-bad";
-        const gpuServiceClass = d.gpu_service?.state === "active" ? "service-ok" : "service-bad";
-
+        const cpuService = DataHelper.getServiceStatus(d, "cpu_service");
+        const cpuServiceFormatted = DataHelper.getFormattedService(cpuService);
+        const cpuServiceClass = cpuServiceFormatted.class;
+        
+        const gpuService = DataHelper.getServiceStatus(d, "gpu_service");
+        const gpuServiceFormatted = DataHelper.getFormattedService(gpuService);
+        const gpuServiceClass = gpuServiceFormatted.class;
+        
         /* ---------------- Docker ---------------- */
-        const dockerList = d.docker ?? [];
-
+        const dockerList = DataHelper.getDockerContainers(d);
+        
         let dockerLeft = `<div class="docker-header">Docker Containers (${dockerList.length})</div>`;
-        dockerLeft += dockerList.length === 0
-            ? "<i>No containers</i>"
-            : dockerList.map(c => `
-                <div>
-                    <b>${c.name}</b><br>
-                    <span>${c.image}</span><br>
-                    <span style="color:#aaa">state: ${c.state}, up: ${fmtUptime(c.uptime_seconds)}</span>
-                </div>
-            `).join("");
+        
+        if (dockerList.length === 0) {
+            dockerLeft += "<div style='padding: 10px; color: var(--text-muted); font-style: italic;'>No containers</div>";
+        } else {
+            dockerList.forEach(container => {
+                dockerLeft += `
+                    <div class="docker-container">
+                        <div class="docker-name-row">${container.name}</div>
+                        <div class="docker-details-grid">
+                            <div class="docker-detail-item">
+                                <div class="docker-detail-label">Image</div>
+                                <div class="docker-detail-value image">${container.image}</div>
+                            </div>
+                            <div class="docker-detail-item">
+                                <div class="docker-detail-label">Uptime</div>
+                                <div class="docker-detail-value uptime">${fmtUptime(container.uptime_seconds)}</div>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
 
         /* ---------------- Miners ---------------- */
-        const rg  = d.miner_rigel;
-        const srb = d.miner_srbminer;
-        const bz  = d.miner_bzminer;
-        const xm  = d.miner_xmrig;
-		const lm  = d.miner_lolminer;
-		const wr  = d.miner_wildrig;
-		const oz  = d.miner_onezerominer;
-		const gm  = d.miner_gminer;
-		
         let minerRight = "";
-
-        /* ----- BzMiner ----- */
-        if (
-            bz &&
-            hasPositiveRate(
-                bz.total_hs ??
-                    (bz.total_mhs ? bz.total_mhs * 1e6 : 0)
-            )
-        ) {
-            const rate = fmtRateHs(
-                bz.total_hs ??
-                    (bz.total_mhs ? bz.total_mhs * 1e6 : null),
-                ""
-            );
-
-            minerRight += `
-                <div class="miner-row">
-                    <b>BzMiner</b> — ${rate}
-                    <span style="float:right;color:#aaa">
-                        ${fmtUptime(bz.uptime_s)}
-                    </span>
-                </div>`;
-        }
-
-        /* ----- XMRig ----- */
-        if (xm && hasPositiveRate(xm.total_hs)) {
-            const rate = fmtXmrig(xm.total_hs);
-
-            minerRight += `
-                <div class="miner-row">
-                    <b>XMRig</b> — ${rate}
-                    <span style="float:right;color:#aaa">
-                        ${fmtUptime(xm.uptime_s)}
-                    </span>
-                </div>`;
-        }
-
-        /* ----- Rigel ----- */
-        if (rg && hasPositiveRate(rg.total_hs)) {
-            const rate = fmtRateHs(rg.total_hs, "");
-
-            minerRight += `
-                <div class="miner-row">
-                    <b>Rigel</b> — ${rate}
-                    <span style="float:right;color:#aaa">
-                        ${fmtUptime(rg.uptime_s)}
-                    </span>
-                </div>`;
-        }
-
-        /* ----- lolMiner ----- */
-        if (lm && hasPositiveRate(lm.total_hs)) {
-            const rate = fmtRateHs(lm.total_hs, "");
-
-            minerRight += `
-                <div class="miner-row">
-                    <b>lolMiner</b> — ${rate}
-                    <span style="float:right;color:#aaa">
-                        ${fmtUptime(lm.uptime_s)}
-                    </span>
-                </div>`;
-        }
-
-        /* ----- SRBMiner ----- */
-        if (srb) {
-                let parts = [];
-
-                if (hasPositiveRate(srb.gpu_hs)) {
-                        parts.push(`GPU ${fmtRateHs(srb.gpu_hs, "")}`);
-                }
-
-                if (hasPositiveRate(srb.cpu_hs)) {
-                        parts.push(`CPU ${fmtRateHs(srb.cpu_hs, "")}`);
-                }
-
-                if (parts.length > 0) {
+        
+        // Process each miner
+        activeMiners.forEach(miner => {
+            const algorithms = DataHelper.getMinerAlgorithms(d, miner.key);
+            
+            algorithms.forEach(algo => {
+                const totalHashrate = DataHelper.getTotalHashrateHS(algo);
+                if (totalHashrate > 0) {
+                    const algoName = DataHelper.getAlgorithmName(algo);
+                    const pool = DataHelper.getPool(algo);
+                    const shares = fmtShares(
+                        DataHelper.getAcceptedShares(algo),
+                        DataHelper.getRejectedShares(algo)
+                    );
+                    
+                    // Special handling for SRBMiner
+                    if (miner.key === "miner_srbminer") {
+                        const cpuHashrate = DataHelper.getCpuHashrateHS(algo);
+                        const gpuHashrate = DataHelper.getGpuHashrateHS(algo);
+                        
+                        const cpuRate = cpuHashrate > 0 ? fmtRateHs(cpuHashrate, "") : null;
+                        const gpuRate = gpuHashrate > 0 ? fmtRateHs(gpuHashrate, "") : null;
+                        const totalRate = totalHashrate > 0 ? fmtRateHs(totalHashrate, "") : null;
+                        
                         minerRight += `
-                <div class="miner-row">
-                        <b>SRBMiner</b> — ${parts.join(" | ")}
-                        <span style="float:right;color:#aaa">
-                                ${fmtUptime(srb.uptime_s)}
-                        </span>
-                </div>`;
+                            <div class="miner-row-horizontal">
+                                <div class="miner-name-row">${miner.name} ${algoName}</div>
+                                <div class="miner-details-compact">
+                                    ${cpuRate ? `
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">CPU HASHRATE</div>
+                                        <div class="stat-value">${cpuRate}</div>
+                                    </div>
+                                    ` : ""}
+                                    ${gpuRate ? `
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">GPU HASHRATE</div>
+                                        <div class="stat-value">${gpuRate}</div>
+                                    </div>
+                                    ` : ""}
+                                    ${totalRate ? `
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">TOTAL HASHRATE</div>
+                                        <div class="stat-value">${totalRate}</div>
+                                    </div>
+                                    ` : ""}
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">SHARES</div>
+                                        <div class="stat-value">${shares}</div>
+                                    </div>
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">UPTIME</div>
+                                        <div class="stat-value">${fmtUptime(miner.data.uptime_s)}</div>
+                                    </div>
+                                </div>
+                            </div>`;
+                    } 
+                    // Special handling for Rigel miner
+                    else if (miner.key === "miner_rigel") {
+                        const poolHashrate = DataHelper.getPoolHashrateHS(algo);
+                        const rate = fmtRateHs(totalHashrate, "");
+                        const poolRate = poolHashrate > 0 ? fmtRateHs(poolHashrate, "") : null;
+                        
+                        minerRight += `
+                            <div class="miner-row-horizontal">
+                                <div class="miner-name-row">${miner.name}</div>
+                                <div class="miner-details-compact">
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">ALGORITHM</div>
+                                        <div class="stat-value">${algoName}</div>
+                                    </div>
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">LOCAL HASHRATE</div>
+                                        <div class="stat-value">${rate}</div>
+                                    </div>
+                                    ${poolRate ? `
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">POOL HASHRATE</div>
+                                        <div class="stat-value">${poolRate}</div>
+                                    </div>
+                                    ` : ""}
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">SHARES</div>
+                                        <div class="stat-value">${shares}</div>
+                                    </div>
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">UPTIME</div>
+                                        <div class="stat-value">${fmtUptime(miner.data.uptime_s)}</div>
+                                    </div>
+                                    ${pool ? `
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">POOL</div>
+                                        <div class="stat-value">${pool}</div>
+                                    </div>
+                                    ` : ""}
+                                </div>
+                            </div>`;
+                    }
+                    else {
+                        // Standard miner display
+                        const rate = miner.key === "miner_xmrig" 
+                            ? fmtXmrig(totalHashrate)
+                            : fmtRateHs(totalHashrate, "");
+                        
+                        minerRight += `
+                            <div class="miner-row-horizontal">
+                                <div class="miner-name-row">${miner.name}</div>
+                                <div class="miner-details-compact">
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">ALGORITHM</div>
+                                        <div class="stat-value">${algoName}</div>
+                                    </div>
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">HASHRATE</div>
+                                        <div class="stat-value">${rate}</div>
+                                    </div>
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">SHARES</div>
+                                        <div class="stat-value">${shares}</div>
+                                    </div>
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">UPTIME</div>
+                                        <div class="stat-value">${fmtUptime(miner.data.uptime_s)}</div>
+                                    </div>
+                                    ${pool ? `
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">POOL</div>
+                                        <div class="stat-value">${pool}</div>
+                                    </div>
+                                    ` : ""}
+                                </div>
+                            </div>`;
+                    }
                 }
-        }
-
-        /* ----- WildRig ----- */
-        if (wr && hasPositiveRate(wr.total_hs)) {
-            const rate = fmtRateHs(wr.total_hs, "");
-
-            minerRight += `
-                <div class="miner-row">
-                    <b>WildRig</b> — ${rate}
-                    <span style="float:right;color:#aaa">
-                        ${fmtUptime(wr.uptime_s)}
-                    </span>
-                </div>`;
-        }
-
-        /* ----- OneZeroMiner ----- */
-        if (oz && hasPositiveRate(oz.total_hs)) {
-            const rate = fmtRateHs(oz.total_hs, "");
-
-            minerRight += `
-                <div class="miner-row">
-                    <b>OneZeroMiner</b> — ${rate}
-                    <span style="float:right;color:#aaa">
-                        ${fmtUptime(oz.uptime_s)}
-                    </span>
-                </div>`;
-        }
-
-        /* ----- GMiner ----- */
-        if (gm && hasPositiveRate(gm.total_hs)) {
-                const rate = fmtRateHs(gm.total_hs, "");
-
-                minerRight += `
-                <div class="miner-row">
-                        <b>GMiner</b> — ${rate}
-                        <span style="float:right;color:#aaa">
-                                ${fmtUptime(gm.uptime_s)}
-                        </span>
-                </div>`;
-        }
-
+            });
+        });
+		
         /* ----- Header only if something rendered ----- */
         if (minerRight !== "") {
             minerRight =
@@ -569,55 +1302,39 @@ function render() {
         }
 
         /* ---------------- Row Summary ---------------- */
-        const minerSummary = [
-            bz
-                ? fmtRateHs(
-                    bz.total_hs ??
-                        (bz.total_mhs ? bz.total_mhs * 1e6 : null),
-                    "BzMiner"
-                )
-                : null,
-
-            xm?.total_hs > 0
-                ? `${fmtXmrig(xm.total_hs)} XMRig`
-                : null,
-
-            rg?.total_hs > 0
-                ? fmtRateHs(rg.total_hs, "Rigel")
-                : null,
-
-            lm?.total_hs > 0
-                ? fmtRateHs(lm.total_hs, "lolMiner")
-                : null,
-
-            srb
-                ? [
-                        hasPositiveRate(srb.gpu_hs)
-                            ? `GPU ${fmtRateHs(srb.gpu_hs, "")} SRBMiner`
-                            : null,
-
-                        hasPositiveRate(srb.cpu_hs)
-                            ? `CPU ${fmtRateHs(srb.cpu_hs, "")} SRBMiner`
-                            : null
-                  ]
-                        .filter(Boolean)
-                        .join(" | ")
-                : null,
-			
-			wr?.total_hs > 0
-                ? fmtRateHs(wr.total_hs, "Wildrig")
-                : null,
-            
-			oz?.total_hs > 0
-                ? fmtRateHs(oz.total_hs, "Onezerominer")
-                : null,
-            gm?.total_hs > 0
-                ? fmtRateHs(gm.total_hs, "GMiner")
-                : null,
-        ]
-            .filter(Boolean)
-            .join(" | ");
-
+        const minerSummary = [];
+        
+        activeMiners.forEach(miner => {
+                const algorithms = DataHelper.getMinerAlgorithms(d, miner.key);
+                
+                algorithms.forEach(algo => {
+                        const totalHashrate = DataHelper.getTotalHashrateHS(algo);
+                        
+                        if (totalHashrate > 0) {
+                                if (miner.key === "miner_srbminer") {
+                                        const cpuHashrate = DataHelper.getCpuHashrateHS(algo);
+                                        const gpuHashrate = DataHelper.getGpuHashrateHS(algo);
+                                        
+                                        const parts = [];
+                                        if (cpuHashrate > 0) {
+                                                parts.push(`CPU ${fmtRateHs(cpuHashrate, "")}`);
+                                        }
+                                        if (gpuHashrate > 0) {
+                                                parts.push(`GPU ${fmtRateHs(gpuHashrate, "")}`);
+                                        }
+                                        if (parts.length > 0) {
+                                                minerSummary.push(`SRBMiner ${parts.join(" | ")}`);
+                                        }
+                                } else if (miner.key === "miner_xmrig") {
+                                        minerSummary.push(`${fmtXmrig(totalHashrate)} XMRig`);
+                                } else {
+                                        minerSummary.push(`${fmtRateHs(totalHashrate, miner.name)}`);
+                                }
+                        }
+                });
+        });
+        
+        const finalMinerSummary = minerSummary.filter(Boolean).join(" | ");
 
         /* ================= ROW BUILD ================= */
 
@@ -667,23 +1384,36 @@ function render() {
 
         main.appendChild(nameEl);
 
-        main.insertAdjacentHTML("beforeend", `
-            <div class="metric"><span class="${cpuTempClass}">${cpuTempStr}</span></div>
-            <div class="metric">${cpuUtil}</div>
-            <div class="metric">${load1} / ${load5} / ${load15}</div>
-            <div class="metric">${ramStr}</div>
-            <div class="metric"><span class="${gpuTempClass}">${gpuTempStr}</span></div>
-            <div class="metric">${gpuUtil}</div>
-            <div class="metric">${gpuPower}</div>
-            <div class="metric"><span class="${fanClass}">${gpuFan}</span></div>
-            <div class="metric">${vramGB}</div>
-            <div class="metric">${coreMHz}</div>
-            <div class="metric">${memMHz}</div>
-            <div class="metric"><span class="${cpuServiceClass}">CPU</span></div>
-            <div class="metric"><span class="${gpuServiceClass}">GPU</span></div>
-            <div class="metric">${dockerList.length}</div>
-            <div class="metric metric-left">${minerSummary}</div>
-        `);
+        // Create column HTML strings
+        const columnHTMLs = [
+            `<div class="metric"><span class="${cpuTempClass}">${cpuTempStr}</span></div>`,
+            `<div class="metric">${cpuUtil}</div>`,
+            `<div class="metric">${load1} / ${load5} / ${load15}</div>`,
+            `<div class="metric">${ramStr}</div>`,
+            `<div class="metric"><span class="${gpuTempClass}">${gpuTempStr}</span></div>`,
+            `<div class="metric">${gpuUtil}</div>`,
+            `<div class="metric">${gpuPower}</div>`,
+            `<div class="metric"><span class="${fanClass}">${gpuFan}</span></div>`,
+            `<div class="metric">${vramGB}</div>`,
+            `<div class="metric">${coreMHz}</div>`,
+            `<div class="metric">${memMHz}</div>`,
+            `<div class="metric"><span class="${cpuServiceClass}">CPU</span></div>`,
+            `<div class="metric"><span class="${gpuServiceClass}">GPU</span></div>`,
+            `<div class="metric">${dockerList.length}</div>`,
+            `<div class="metric metric-left">${finalMinerSummary}</div>`
+        ];
+
+        // Insert all columns at once
+        main.insertAdjacentHTML("beforeend", columnHTMLs.join(''));
+
+        // Apply hidden state to each column immediately
+        // Column indices: 0 is rig name, 1-15 are the metrics
+        for (let colIndex = 1; colIndex <= 15; colIndex++) {
+            const cell = main.children[colIndex];
+            if (cell && hiddenColumns.has(colIndex)) {
+                cell.classList.add('column-hidden');
+            }
+        }
 
         row.appendChild(main);
 
@@ -694,56 +1424,243 @@ function render() {
         pop.style.display = open ? "flex" : "none";
 
         pop.addEventListener("click", ev => ev.stopPropagation());
-		pop.innerHTML = `
-    <div class="pop-content">
-        <div class="pop-left"></div>
-
-        <div class="pop-right">
-            <div class="pop-row">
-                <div class="pop-section pop-docker">
+        pop.innerHTML = `
+            <div class="pop-content">
+                <div class="pop-docker">
                     ${dockerLeft}
                 </div>
-
-                <div class="pop-section pop-miners">
+                <div class="pop-miners">
                     ${minerRight}
                 </div>
             </div>
-        </div>
-    </div>
-`;
-
-
+        `;
 
         row.appendChild(pop);
         container.appendChild(row);
     });
-
+    
     updateSelectButton();
-	updateActionStats();
+    updateActionStats();
+    
+    // Apply hidden state to headers
+    applyHeaderVisibility();
+    
+    console.log('✅ Render complete');
 }
 
-/* -------------------- Actions -------------------- */
+function updateActionStats() {
+    const wattsEl = document.getElementById("stat-gpu-watts");
+    const hashEl = document.getElementById("stat-hashrate");
 
-async function hardReset(ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
+    if (!wattsEl || !hashEl) return;
 
-    resetInProgress = true;
-    setResetButtonDisabled(true);
+    let totalWatts = 0;
+    const algoTotals = {};
 
-    if (!window.confirm("Clear all known rigs and reload fresh data?")) {
-        resetInProgress = false;
-        setResetButtonDisabled(false);
-        return;
-    }
+    const rigNames = selectedRigs.size > 0
+        ? Array.from(selectedRigs)
+        : Object.keys(rigsState).filter(n => n !== "rigs");
 
-    try {
-        await fetch("/dashboard/reset", { method: "POST" });
-    } finally {
-        resetInProgress = false;
-        setResetButtonDisabled(false);
+    rigNames.forEach(name => {
+        const d = rigsState[name]?.data;
+        if (!d) return;
+
+        /* ---------------- GPU watts ---------------- */
+        totalWatts += DataHelper.getTotalGpuPower(d);
+
+        /* ---------------- Miners ---------------- */
+        const algorithms = DataHelper.getAllAlgorithms(d);
+        
+        algorithms.forEach(algo => {
+            const algoName = DataHelper.getAlgorithmName(algo);
+            const hashrate = DataHelper.getTotalHashrateHS(algo);
+            
+            if (hashrate > 0) {
+                if (!algoTotals[algoName]) {
+                    algoTotals[algoName] = 0;
+                }
+                algoTotals[algoName] += hashrate;
+            }
+        });
+    });
+
+    /* ---------------- Render GPU watts ---------------- */
+    wattsEl.textContent =
+        totalWatts > 0
+            ? `GPU W: ${Math.round(totalWatts)}`
+            : "GPU W: --";
+
+    /* ---------------- Render algorithm totals ---------------- */
+    const hashParts = [];
+    const sortedAlgos = Object.keys(algoTotals).sort((a, b) => algoTotals[b] - algoTotals[a]);
+    
+    sortedAlgos.forEach(algoName => {
+        const totalHashrate = algoTotals[algoName];
+        if (totalHashrate > 0) {
+            hashParts.push(`${algoName}: ${fmtRateHs(totalHashrate, "")}`);
+        }
+    });
+
+    hashEl.textContent =
+        hashParts.length > 0
+            ? hashParts.join(" | ")
+            : "--";
+}
+
+// =====================================================
+// UI HELPER FUNCTIONS
+// =====================================================
+
+function updateSelectButton() {
+    const btn = document.getElementById("btn-toggle-select");
+    if (!btn) return;
+
+    const total = Object.keys(rigsState).length;
+
+    btn.textContent =
+        selectedRigs.size === total && total > 0 ? "☑" : "☐";
+}
+
+function setActionMode(mode) {
+    if (!["all", "cpu", "gpu"].includes(mode)) return;
+
+    currentActionMode = mode;
+    localStorage.setItem("actionMode", mode);
+
+    document.querySelectorAll(".action-tab").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.mode === mode);
+    });
+
+    setActionOutput(`Mode: ${mode.toUpperCase()}`);
+}
+
+function setActionOutput(text) {
+    const el = document.getElementById("action-output");
+    if (!el) return;
+
+    el.value = text;
+}
+
+function getActionsForMode() {
+    switch (currentActionMode) {
+        case "cpu":
+            return ["cpu"];
+
+        case "gpu":
+            return ["gpu"];
+
+        case "all":
+            return ["cpu", "gpu"];
+
+        default:
+            return [];
     }
 }
+
+function toggleSelectAll() {
+
+    const rigNames = Object.keys(rigsState)
+        .filter(name => name !== "rigs");
+
+    if (rigNames.length === 0) return;
+
+    const eligible = rigNames.filter(name => {
+        const d = rigsState[name]?.data ?? {};
+        const cpuActive = d.cpu_service?.state === "active";
+        const gpuActive = d.gpu_service?.state === "active";
+
+        if (currentActionMode === "all") return true;
+
+        if (currentActionMode === "cpu") {
+            return cpuActive;
+        }
+
+        if (currentActionMode === "gpu") {
+            return gpuActive;
+        }
+    });
+
+    if (eligible.length === 0) return;
+
+    const allSelected = eligible.every(name => selectedRigs.has(name));
+
+    if (allSelected) {
+        eligible.forEach(name => selectedRigs.delete(name));
+    } else {
+        eligible.forEach(name => selectedRigs.add(name));
+    }
+
+    render();
+}
+
+function confirmAction(actionLabel) {
+    const count = selectedRigs.size;
+
+    if (count === 0) {
+        alert("No rigs selected");
+        return false;
+    }
+
+    return window.confirm(
+        `${actionLabel} on ${count} selected rig${count !== 1 ? "s" : ""}?`
+    );
+}
+
+function setResetButtonDisabled(disabled) {
+    const btn = document.querySelector(".reset-btn");
+    if (!btn) return;
+    btn.classList.toggle("disabled", disabled);
+    btn.style.pointerEvents = disabled ? "none" : "auto";
+}
+
+function toggleDocker(id) {
+    popoverState[id] = !popoverState[id];
+    render();
+}
+
+function stopClick(ev) { ev.stopPropagation(); }
+
+// =====================================================
+// MODAL MANAGEMENT
+// =====================================================
+
+function openCmdModal() {
+    document.getElementById("cmd-target-count").textContent =
+        selectedRigs.size;
+
+    const modal = document.getElementById("cmd-modal");
+    const input = document.getElementById("cmd-input");
+
+    const out = document.getElementById("cmd-output");
+    if (out) out.textContent = "";
+
+    modal.classList.remove("hidden");
+    //input.value = "";
+    input.focus();
+}
+
+function closeCmdModal() {
+    document.getElementById("cmd-modal").classList.add("hidden");
+}
+
+function openFlightsheetsModal() {
+    closeCmdModal(); // safety
+    document.getElementById("fs-modal").classList.remove("hidden");
+
+    document.getElementById("fs-name").value = "";
+    document.getElementById("fs-raw").value = "";
+
+    loadFlightsheets();
+}
+
+function closeFlightsheetsModal() {
+    document.getElementById("fs-modal").classList.add("hidden");
+    selectedFlightsheetId = null;
+}
+
+// =====================================================
+// ACTION FUNCTIONS (COMMAND SENDING)
+// =====================================================
 
 async function sendCommandToSelectedRigs(command) {
     if (selectedRigs.size === 0) {
@@ -751,12 +1668,12 @@ async function sendCommandToSelectedRigs(command) {
         return;
     }
 
-    return fetch("/dashboard/command", {
+    return fetch(`${API}/command`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             rigs: Array.from(selectedRigs),
-            command: command
+            command
         })
     });
 }
@@ -769,6 +1686,66 @@ function submitCmd() {
         console.error("Command send failed", err);
         alert("Failed to send command");
     });
+}
+
+function actionStart() {
+    const label =
+        currentActionMode === "cpu" ? "Start CPU miners" :
+            currentActionMode === "gpu" ? "Start GPU miners" :
+                "Start ALL miners";
+
+    if (!confirmAction(label)) return;
+
+    setActionOutput(label + "…");
+
+    if (currentActionMode === "cpu") {
+        cpuStart();
+    } else if (currentActionMode === "gpu") {
+        gpuStart();
+    } else if (currentActionMode === "all") {
+        cpuStart();             // ✅ ALL = CPU + GPU
+        gpuStart();
+    }
+}
+
+function actionStop() {
+    const label =
+        currentActionMode === "cpu" ? "Stop CPU miners" :
+            currentActionMode === "gpu" ? "Stop GPU miners" :
+                "Stop ALL miners";
+
+    if (!confirmAction(label)) return;
+
+    setActionOutput(label + "…");
+
+    if (currentActionMode === "cpu") {
+        cpuStop();
+    } else if (currentActionMode === "gpu") {
+        gpuStop();
+    } else if (currentActionMode === "all") {
+        cpuStop();
+        gpuStop();
+    }
+}
+
+function actionRestart() {
+    const label =
+        currentActionMode === "cpu" ? "Restart CPU miners" :
+            currentActionMode === "gpu" ? "Restart GPU miners" :
+                "Restart ALL miners";
+
+    if (!confirmAction(label)) return;
+
+    setActionOutput(label + "…");
+
+    if (currentActionMode === "cpu") {
+        cpuRestart();
+    } else if (currentActionMode === "gpu") {
+        gpuRestart();
+    } else if (currentActionMode === "all") {
+        cpuRestart();
+        gpuRestart();
+    }
 }
 
 function gpuStart() {
@@ -813,173 +1790,70 @@ function runRawShell(commandText) {
     sendCommandToSelectedRigs(commandText);
 }
 
-/* -------------------- UI helpers -------------------- */
+// =====================================================
+// SYSTEM ACTIONS
+// =====================================================
 
-function setActionMode(mode) {
-    if (!["all", "cpu", "gpu"].includes(mode)) return;
+async function hardReset(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
 
-    currentActionMode = mode;
-    localStorage.setItem("actionMode", mode);
+    resetInProgress = true;
+    setResetButtonDisabled(true);
 
-    document.querySelectorAll(".action-tab").forEach(btn => {
-        btn.classList.toggle("active", btn.dataset.mode === mode);
-    });
-    
-    setActionOutput(`Mode: ${mode.toUpperCase()}`);
-}
-
-function setActionOutput(text) {
-    const el = document.getElementById("action-output");
-    if (!el) return;
-
-    el.value = text;
-}
-
-function getActionsForMode() {
-    switch (currentActionMode) {
-        case "cpu":
-            return ["cpu"];
-
-        case "gpu":
-            return ["gpu"];
-
-        case "all":
-            return ["cpu", "gpu"];
-
-        default:
-            return [];
-    }
-}
-
-function actionStart() {
-    const label =
-        currentActionMode === "cpu"    ? "Start CPU miners" :
-        currentActionMode === "gpu"    ? "Start GPU miners" :
-                                         "Start ALL miners";
-
-    if (!confirmAction(label)) return;
-
-    setActionOutput(label + "…");
-
-    if (currentActionMode === "cpu") {
-        cpuStart();
-    } else if (currentActionMode === "gpu") {
-        gpuStart();
-    } else if (currentActionMode === "all") {
-        cpuStart();             // ✅ ALL = CPU + GPU
-        gpuStart();
-    }
-}
-
-
-function actionStop() {
-    const label =
-        currentActionMode === "cpu"    ? "Stop CPU miners" :
-        currentActionMode === "gpu"    ? "Stop GPU miners" :
-                                         "Stop ALL miners";
-
-    if (!confirmAction(label)) return;
-
-    setActionOutput(label + "…");
-
-    if (currentActionMode === "cpu") {
-        cpuStop();
-    } else if (currentActionMode === "gpu") {
-        gpuStop();
-    } else if (currentActionMode === "all") {
-        cpuStop();
-        gpuStop();
-    }
-}
-
-
-function actionRestart() {
-    const label =
-        currentActionMode === "cpu"    ? "Restart CPU miners" :
-        currentActionMode === "gpu"    ? "Restart GPU miners" :
-                                         "Restart ALL miners";
-
-    if (!confirmAction(label)) return;
-
-    setActionOutput(label + "…");
-
-    if (currentActionMode === "cpu") {
-        cpuRestart();
-    } else if (currentActionMode === "gpu") {
-        gpuRestart();
-    } else if (currentActionMode === "all") {
-        cpuRestart();
-        gpuRestart();
-    }
-}
-
-
-function updateSelectButton() {
-    const btn = document.getElementById("btn-toggle-select");
-    if (!btn) return;
-
-    const total = Object.keys(rigsState).length;
-
-    btn.textContent =
-        selectedRigs.size === total && total > 0 ? "☑" : "☐";
-}
-
-function confirmAction(actionLabel) {
-    const count = selectedRigs.size;
-
-    if (count === 0) {
-        alert("No rigs selected");
-        return false;
-    }
-
-    return window.confirm(
-        `${actionLabel} on ${count} selected rig${count !== 1 ? "s" : ""}?`
-    );
-}
-
-
-function openCmdModal() {
-    if (selectedRigs.size === 0) {
-        alert("No rigs selected");
+    if (!window.confirm("Clear all known rigs and reload fresh data?")) {
+        resetInProgress = false;
+        setResetButtonDisabled(false);
         return;
     }
 
-    document.getElementById("cmd-target-count").textContent =
-        selectedRigs.size;
-
-    const modal = document.getElementById("cmd-modal");
-    const input = document.getElementById("cmd-input");
-
-    const out = document.getElementById("cmd-output");
-    if (out) out.textContent = "";
-
-    modal.classList.remove("hidden");
-    input.value = "";
-    input.focus();
+    try {
+        await fetch(`${API}/reset`, { method: "POST" });
+    } finally {
+        resetInProgress = false;
+        setResetButtonDisabled(false);
+    }
 }
 
-function closeCmdModal() {
-    document.getElementById("cmd-modal").classList.add("hidden");
-}
 
-function setResetButtonDisabled(disabled) {
-    const btn = document.querySelector(".reset-btn");
-    if (!btn) return;
-    btn.classList.toggle("disabled", disabled);
-    btn.style.pointerEvents = disabled ? "none" : "auto";
-}
+// =====================================================
+// ADDITIONAL EVENT HANDLERS & KEYBOARD SHORTCUTS
+// =====================================================
 
-function toggleDocker(id) {
-    popoverState[id] = !popoverState[id];
-    render();
-}
+// Add keyboard shortcuts
+document.addEventListener("keydown", (e) => {
+    // Ctrl/Cmd + Enter to send command
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        const cmdModal = document.getElementById("cmd-modal");
+        if (cmdModal && !cmdModal.classList.contains("hidden")) {
+            submitCmd();
+            e.preventDefault();
+        }
+    }
+    
+    // Ctrl/Cmd + S to save flightsheet
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        const fsModal = document.getElementById("fs-modal");
+        if (fsModal && !fsModal.classList.contains("hidden")) {
+            saveFlightsheetFromDialog();
+        }
+    }
+    
+    // Ctrl/Cmd + A to select all (when not in input/textarea)
+    if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+        const activeElement = document.activeElement;
+        if (activeElement.tagName !== "INPUT" && activeElement.tagName !== "TEXTAREA") {
+            e.preventDefault();
+            toggleSelectAll();
+        }
+    }
+});
 
-function stopClick(ev) { ev.stopPropagation(); }
+// =====================================================
+// POLLING / AUTO-REFRESH
+// =====================================================
 
-/* -------------------- Init -------------------- */
-initWebSocket();
-fetchRigsOnce();
-
-setInterval(() => {
-    if (Date.now() / 1000 - lastUpdateTs > 30) fetchRigsOnce();
-}, 10000);
+//setInterval(() => {
+//    if (Date.now() / 1000 - lastUpdateTs > 30) fetchRigsOnce();
+//}, 10000);

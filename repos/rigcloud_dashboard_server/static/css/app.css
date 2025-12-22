@@ -236,9 +236,12 @@ h1 {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
+.action-spacer {
+    flex: 1;
+}
 
 /* ==================================================
-   Command Modal
+   Command Modal (and Flightsheets Modal)
 ================================================== */
 
 .cmd-modal {
@@ -264,13 +267,23 @@ h1 {
     width: 80vw;
     height: 80vh;
     max-width: 1200px;
+
+    background: #000;
+    border: 1px solid #333;
+    border-radius: 6px;
+    overflow: hidden;
 }
 
+/* ================= Header ================= */
+
 .cmd-header {
+    flex: 0 0 auto;
+
     background: #111;
     border-bottom: 1px solid #333;
 
     padding: 10px 14px;
+
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -284,10 +297,17 @@ h1 {
     color: var(--text-secondary);
 }
 
+/* ================= Input ================= */
+
 #cmd-input {
-    height: 80px;
-    min-height: 80px;
-    max-height: 120px;
+    flex: 0 0 auto;
+
+    height: 250px;
+    min-height: 250px;
+    max-height: 250px;
+
+    box-sizing: border-box;
+    resize: none;
 
     background: #000;
     color: var(--text-primary);
@@ -296,24 +316,99 @@ h1 {
 
     font-family: Consolas, monospace;
     font-size: 13px;
+    line-height: 1.4;
 
     padding: 10px;
     outline: none;
-    resize: vertical;
 }
 
-.cmd-footer {
+/* ================= Body / Output ================= */
+
+.cmd-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+
+    background: #000;
+}
+
+.cmd-output {
+    flex: 1 1 auto;
+    min-height: 0;
+
+    margin: 0;
+    padding: 12px;
+
+    background: #000;
+    color: var(--text-primary);
+
+    font-family: Consolas, monospace;
+    font-size: 13px;
+
+    overflow-y: auto;
+    white-space: pre-wrap;
+
+    border-bottom: 1px solid #333;
+}
+
+/* ================= Rows (used by other modals too) ================= */
+
+.cmd-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
     padding: 10px 14px;
+
+    border-bottom: 1px solid #333;
+    background: #000;
+}
+
+.cmd-row label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.cmd-row input {
+    background: #111;
+    color: var(--text-primary);
+
+    border: 1px solid #333;
+    border-radius: 4px;
+
+    padding: 6px 8px;
+    font-size: 13px;
+    outline: none;
+}
+
+.cmd-row input:focus {
+    border-color: var(--text-accent);
+}
+
+/* ================= Footer ================= */
+
+.cmd-footer {
+    flex: 0 0 auto;
+
+    padding: 10px 14px;
+
     border-top: 1px solid #333;
+    background: #111;
 
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     gap: 10px;
 }
+
+/* ================= Buttons ================= */
 
 .cmd-btn {
     min-width: 44px;
     height: 28px;
+
+    padding: 6px 14px;
 
     border-radius: 6px;
     border: 1px solid #2e2e2e;
@@ -336,31 +431,83 @@ h1 {
     background: #203040;
 }
 
-.cmd-output {
-    flex: 1;
-    margin: 0;
-    padding: 12px;
-
-    background: #000;
-    color: var(--text-primary);
-
-    font-family: Consolas, monospace;
-    font-size: 13px;
-
-    overflow-y: auto;
-    border-top: 1px solid #333;
-    white-space: pre-wrap;
+.cmd-btn.cancel {
+    opacity: 0.85;
 }
 
+/* ==================================================
+   Flightsheets Specific Styles
+================================================== */
+
+/* Fix flightsheets modal layout */
+.cmd-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0; /* Crucial for scrolling to work */
+}
+
+/* Flightsheets section layout */
+.fs-section {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.fs-section input {
+    flex: 1;
+}
+
+/* Flightsheets list */
+.fs-list {
+    flex: 0 0 auto; /* Don't grow/shrink - size to content */
+    max-height: 50vh; /* Limit to 50% of viewport height */
+    overflow-y: auto;
+    border-top: 1px solid #333;
+}
+
+/* Flightsheet items */
+.fs-item {
+    padding: 8px 10px;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+}
+
+.fs-item:hover {
+    background: #1c1c1c;
+}
+
+.fs-item.selected {
+    background: #203040;
+    color: var(--text-accent);
+}
+
+/* Flightsheets raw editor */
+#fs-raw {
+    flex: 1 1 auto; /* Take remaining space */
+    min-height: 200px;
+    background: #000;
+    color: var(--text-primary);
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    padding: 10px;
+    border: 1px solid #333;
+    resize: vertical;
+    box-sizing: border-box;
+}
 
 /* ==================================================
-   Rig List / Grid
+   Rig List / Grid (FLEXBOX with Original Widths)
 ================================================== */
+.rig-name {
+    color: var(--text-accent-soft);
+}
 
 .rig-row {
     display: flex;
     flex-direction: column;
-
+    color: var(--text-primary);
     background: #1b1b1b;
     border: 1px solid #333;
     border-radius: 6px;
@@ -389,51 +536,175 @@ h1 {
     margin-bottom: 6px;
 
     font-size: 14px;
-    font-weight: bold;
+
     color: var(--text-accent-soft);
-    pointer-events: none;
 }
 
 .rig-header .reset-btn {
     pointer-events: auto;
 }
 
+/* FLEXBOX CONTAINERS */
 .rig-header-grid,
 .rig-main {
-    display: grid;
+    display: flex;
     align-items: center;
     white-space: nowrap;
-    column-gap: 10px;
-
-    grid-template-columns:
-        100px 60px 60px 150px 100px
-        60px 60px 60px 50px 70px
-        70px 70px 40px 40px 20px 220px;
+    gap: 10px;
+    width: 100%;
 }
 
 .rig-main {
     cursor: pointer;
 }
 
-.rig-name {
-    font-weight: bold;
-    color: var(--text-accent-soft);
+/* ==================================================
+   ORIGINAL COLUMN WIDTHS (as min-width when expanded)
+================================================== */
+
+/* Fixed width columns */
+.rig-header-grid > div:first-child,
+.rig-main > div:first-child {
+    width: 100px;
+    flex: 0 0 100px; /* Rig name */
+}
+
+/* LAST COLUMN - Miner */
+.rig-header-grid > div:last-child,
+.rig-main > div:last-child {
+    width: 220px;
+    flex: 1 0 220px; /* ← PROBLEM: Can't shrink */
+}
+
+/* Column 2: Temp (60px) */
+.rig-header-grid > div:nth-child(2),
+.rig-main > div:nth-child(2) {
+    min-width: 20px;
+    flex: 1 1 20px;
+}
+
+/* Column 3: Watts (60px) */
+.rig-header-grid > div:nth-child(3),
+.rig-main > div:nth-child(3) {
+    min-width: 20px;
+    flex: 1 1 20px;
+}
+
+/* Column 4: LA/Algorithm (150px) */
+.rig-header-grid > div:nth-child(4),
+.rig-main > div:nth-child(4) {
+    min-width: 70px;  /* ORIGINAL WIDTH */
+    flex: 2.5 1 70px; /* Gets more space */
+}
+
+/* Column 5: Pool (100px) */
+.rig-header-grid > div:nth-child(5),
+.rig-main > div:nth-child(5) {
+    min-width: 20px;
+    flex: 1.5 1 20px;
+}
+
+/* Column 6: Hash (60px) */
+.rig-header-grid > div:nth-child(6),
+.rig-main > div:nth-child(6) {
+    min-width: 20px;
+    flex: 1 1 20px;
+}
+
+/* Column 7: Shares (60px) */
+.rig-header-grid > div:nth-child(7),
+.rig-main > div:nth-child(7) {
+    min-width: 20px;
+    flex: 1 1 20px;
+}
+
+/* Column 8: Uptime (60px) */
+.rig-header-grid > div:nth-child(8),
+.rig-main > div:nth-child(8) {
+    min-width: 20px;
+    flex: 1 1 20px;
+}
+
+/* Column 9: Fan (50px) */
+.rig-header-grid > div:nth-child(9),
+.rig-main > div:nth-child(9) {
+    min-width: 20px;
+    flex: 0.8 1 20px;
+}
+
+/* Column 10: Speed (70px) */
+.rig-header-grid > div:nth-child(10),
+.rig-main > div:nth-child(10) {
+    min-width: 20px;
+    flex: 1.2 1 20px;
+}
+
+/* Column 11: Memory (70px) */
+.rig-header-grid > div:nth-child(11),
+.rig-main > div:nth-child(11) {
+    min-width: 20px;
+    flex: 1.2 1 20px;
+}
+
+/* Column 12: Core (70px) */
+.rig-header-grid > div:nth-child(12),
+.rig-main > div:nth-child(12) {
+    min-width: 20px;
+    flex: 1.2 1 20px;
+}
+
+/* Column 13: Voltage (40px) */
+.rig-header-grid > div:nth-child(13),
+.rig-main > div:nth-child(13) {
+    min-width: 20px;
+    flex: 0.7 1 20px;
+}
+
+/* Column 14: Efficiency (40px) */
+.rig-header-grid > div:nth-child(14),
+.rig-main > div:nth-child(14) {
+    min-width: 20px;
+    flex: 0.7 1 20px;
+}
+
+/* Column 15: Spacer (20px) */
+.rig-header-grid > div:nth-child(15),
+.rig-main > div:nth-child(15) {
+    width: 20px;
+    flex: 0 0 20px;
+}
+
+/* ==================================================
+   Column Hide System (Simple)
+================================================== */
+
+/* HIDDEN COLUMNS - Use visibility: collapse to remove from layout */
+.column-hidden {
+    visibility: collapse !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    flex: 0 0 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+}
+
+/* Clickable headers */
+.rig-header-grid > div:not(:first-child):not(:last-child):not(:nth-child(15)) {
     cursor: pointer;
+    user-select: none;
 }
 
-.rig-name {
-    display: inline-block;   /* create a paint box */
-    padding: 2px 6px;        /* constant space (no hover jitter) */
-    border-radius: 4px;
+.rig-header-grid > div:not(:first-child):not(:last-child):not(:nth-child(15)):hover {
+    color: var(--text-muted); /* Keep grey text on hover */
+    /* Remove or comment out any background changes */
+    /* background: rgba(59, 130, 246, 0.1); */
 }
 
-
-.metric,
-.metric-left,
-.title-left {
-    color: var(--text-primary);
-}
-
+/* Metric styling */
 .metric {
     text-align: right;
     padding-right: 6px;
@@ -445,6 +716,7 @@ h1 {
     padding-right: 6px;
 }
 
+/* Status colors */
 .status-hot  { color: var(--text-error); }
 .status-warm { color: var(--text-warn); }
 .status-good { color: var(--text-ok); }
@@ -459,51 +731,9 @@ h1 {
     font-weight: bold;
 }
 
-
 /* ==================================================
-   Docker / Miner Popout
+   Hover Effects
 ================================================== */
-
-.docker-popover {
-    background: #111;
-    border: 1px solid #333;
-    border-radius: 6px;
-
-    padding: 10px 12px;
-    margin-top: 4px;
-
-    display: flex;
-    gap: 24px;
-    font-size: 13px;
-}
-
-.pop-left {
-    flex: 1;
-    min-width: 300px;
-}
-
-.pop-right {
-    flex: 0 0 260px;
-    border-left: 1px solid #333;
-    padding-left: 14px;
-}
-
-.docker-header {
-    font-weight: bold;
-    color: var(--text-info);
-    margin-bottom: 4px;
-}
-
-.miner-row {
-    padding: 2px 0;
-    margin-bottom: 4px;
-    border-bottom: 1px solid #222;
-    white-space: nowrap;
-}
-
-/* --------------------------------------------------
-   Rig-name hover preview (imitates selected row)
--------------------------------------------------- */
 
 .rig-row:not(.selected):has(.rig-name:hover) {
     background: #16212b;
@@ -514,3 +744,207 @@ h1 {
     color: #4fc3f7;
 }
 
+
+/* ==================================================
+   Docker / Miner Popout (30/70 Split - Left Justified)
+================================================== */
+
+.docker-popover {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-top: 4px;
+    display: flex;
+    gap: 24px;
+    font-size: 13px;
+	color: var(--text-primary); /* Add this - makes all text white */
+}
+
+/* Ensure pop-content has proper flex layout */
+.pop-content {
+    display: flex;
+    gap: 24px;
+    width: 100%;
+    align-items: flex-start;
+}
+
+/* Docker - 30% */
+.pop-docker {
+    flex: 0 0 30%;
+    max-width: 30%;
+    min-width: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+	color: var(--text-primary); /* Ensure white text */
+}
+
+/* Miners - 70% */
+.pop-miners {
+    flex: 1;
+    max-height: 400px;
+    overflow-y: auto;
+	color: var(--text-primary); /* Ensure white text */
+}
+
+.docker-header {
+    font-weight: bold;
+    color: var(--text-info);
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #333;
+    position: sticky;
+    top: 0;
+    background: #111;
+    z-index: 1;
+}
+
+/* ==================================================
+   Docker Container Layout
+================================================== */
+
+.docker-container {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #222;
+	color: var(--text-primary); /* Ensure white text */
+}
+
+.docker-container:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.docker-name-row {
+    color: var(--text-primary); /* Changed from var(--text-accent) to white */
+    margin-bottom: 6px;
+    font-size: 14px;
+    padding-left: 4px;
+}
+
+.docker-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 6px;
+    padding: 0 4px;
+	color: var(--text-primary); /* Ensure white text */
+}
+
+/* Docker Detail Items - These are INSIDE docker-details-grid */
+.docker-detail-item {
+    display: flex;
+    flex-direction: column;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 3px;
+    padding: 4px 6px;
+	color: var(--text-primary); /* Ensure white text */
+}
+
+.docker-detail-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+
+.docker-detail-value {
+    font-size: 12px;
+    color: var(--text-primary); /* Change from #aaa to white */
+    font-weight: bold;
+}
+
+.docker-detail-value.image {
+    color: var(--text-primary); /* Changed from var(--text-accent-soft) to white */
+}
+
+.docker-detail-value.uptime {
+    color: var(--text-primary); /* Changed from var(--text-info) to white */
+}
+/* ==================================================
+   Compact Miner Details (NOT stretched full width)
+================================================== */
+
+/* Main container - inline-block to hug content */
+.miner-details-compact {
+    display: inline-flex;
+    gap: 12px;
+    padding: 6px 10px;
+    background: rgba(30, 30, 30, 0.95);
+    color: white;
+    border-radius: 6px;
+    margin: 4px 0;
+    border: 1px solid #333;
+    align-items: center;
+    flex-wrap: wrap; /* Wrap on small screens */
+}
+
+/* Individual stat item */
+.miner-stat-item {
+    text-align: center;
+    min-width: 70px;
+    padding: 0 3px;
+}
+
+/* Stat label - small and subtle */
+.stat-label {
+    font-size: 0.7em;
+    opacity: 0.7;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+/* Stat value - bold and clear */
+.stat-value {
+    font-size: 0.9em;
+    font-weight: 600;
+    font-family: 'Monaco', 'Consolas', monospace;
+    white-space: nowrap;
+}
+
+/* For single miner rows (remove horizontal layout) */
+.miner-row-horizontal {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #222;
+}
+
+.miner-row-horizontal:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* Remove the old miner-details-grid and replace with compact */
+.miner-details-grid {
+    display: none; /* Hide old stretched layout */
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .miner-details-compact {
+        gap: 8px;
+        padding: 5px 8px;
+    }
+    
+    .miner-stat-item {
+        min-width: 60px;
+    }
+}
+
+/* Make sure this is SUPER specific and at the END of your CSS */
+.rig-main > div.column-hidden,
+.rig-header-grid > div.column-hidden {
+    flex: 0 0 0px !important;
+    min-width: 0px !important;
+    max-width: 0px !important;
+    width: 0px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+}

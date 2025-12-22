@@ -4,6 +4,8 @@ import asyncio
 import json
 import threading
 import time
+import boto3
+import csv
 
 from pathlib import Path
 from typing import Dict, Any, List
@@ -19,47 +21,75 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from contextlib import asynccontextmanager
 
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import List
+from boto3.dynamodb.conditions import Key
+
+dynamodb = None
+
+flightsheets_table = None
+
+USE_AWS_DB = os.getenv("USE_AWS_DB", "false").lower() == "true"
+
 router = APIRouter()
+
+# ----------------------------
+# Models
+# ----------------------------
+
+class FlightSheetEntryIn(BaseModel):
+    key: str
+    gpu: int
+    value: str
+
+class FlightSheetPutIn(BaseModel):
+    entries: List[FlightSheetEntryIn]
 
 # ================================================================
 # MQTT CONFIG ... https://mosquitto.org/download/
 # ================================================================
-#MQTT_MODE = "local"  # "local" or "aws"
+# MQTT_MODE = "local", "pi" or "aws"
+# local will start "C:\Program Files\mosquitto\mosquitto.exe"
 
-MQTT_MODE = os.getenv("MQTT_MODE", "local")
+MQTT_MODE = os.getenv("MQTT_MODE", "pi")
 
 if MQTT_MODE == "local":
+
     MQTT_BROKER = os.getenv("MQTT_HOST", "127.0.0.1")
     MQTT_PORT   = int(os.getenv("MQTT_PORT", "1883"))
     MQTT_USER   = os.getenv("MQTT_USER", "admin")
-    MQTT_PASS   = os.getenv("MQTT_PASS", "*****")
+    MQTT_PASS   = os.getenv("MQTT_PASS", "******")
 
     MQTT_CERT = None
     MQTT_KEY  = None
     MQTT_CA   = None
+
     BASE_PATH = os.getenv("BASE_PATH", "/dashboard")
-    
+
 elif MQTT_MODE == "pi":
     MQTT_BROKER = os.getenv("MQTT_HOST", "mosquitto")
     MQTT_PORT   = int(os.getenv("MQTT_PORT", "1883"))
     MQTT_USER   = os.getenv("MQTT_USER", "admin")
-    MQTT_PASS   = os.getenv("MQTT_PASS", "*****")
+    MQTT_PASS   = os.getenv("MQTT_PASS", "******")
 
     MQTT_CERT = None
     MQTT_KEY  = None
     MQTT_CA   = None
+
     BASE_PATH = os.getenv("BASE_PATH", "")
 
 elif MQTT_MODE == "aws":
-    MQTT_BROKER = os.getenv("AWS_MQTT_HOST")  # *.iot.<region>.amazonaws.com
+
+    MQTT_BROKER = os.getenv("AWS_MQTT_HOST", "")  # *.iot.<region>.amazonaws.com
     MQTT_PORT   = int(os.getenv("AWS_MQTT_PORT", "8883"))
+    MQTT_USER = None
+    MQTT_PASS = None
 
     MQTT_CERT = os.getenv("AWS_MQTT_CERT", "/certs/device.pem.crt")
     MQTT_KEY  = os.getenv("AWS_MQTT_KEY",  "/certs/private.pem.key")
     MQTT_CA   = os.getenv("AWS_MQTT_CA",   "/certs/AmazonRootCA1.pem")
 
-    MQTT_USER = None
-    MQTT_PASS = None
     BASE_PATH = os.getenv("BASE_PATH", "")
 
 else:
@@ -124,7 +154,6 @@ def log(msg: str) -> None:
 # ================================================================
 # MOSQUITTO START
 # ================================================================
-
 import subprocess
 import psutil
 
@@ -181,6 +210,139 @@ def start_mosquitto():
 
     except Exception as e:
         log(f"ERROR starting Mosquitto: {e}")
+
+# ================================================================
+# AWS credentials loader (from accessKeys.csv)
+# Requires boto3: python -m pip install boto3
+# ================================================================
+
+def load_aws_credentials_from_csv(csv_path: str | Path) -> dict:
+    """
+    Load AWS credentials from an AWS Console accessKeys.csv export.
+    Returns a dict with access_key, secret_key.
+    """
+    csv_path = Path(csv_path)
+
+    if not csv_path.exists():
+        raise FileNotFoundError(f"AWS credentials file not found: {csv_path}")
+
+    with csv_path.open(newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+
+        for row in reader:
+            # Support all known AWS header variants
+            access_key = (
+                row.get("Access key ID")
+                or row.get("Access key")
+                or row.get("AccessKeyId")
+            )
+
+            secret_key = (
+                row.get("Secret access key")
+                or row.get("Secret access key ")
+                or row.get("SecretAccessKey")
+            )
+
+            if access_key and secret_key:
+                return {
+                    "aws_access_key_id": access_key.strip(),
+                    "aws_secret_access_key": secret_key.strip(),
+                }
+
+    raise RuntimeError("No valid AWS credentials found in CSV")
+
+# ================================================================
+# USE_AWS_DB
+# ================================================================
+
+from botocore.exceptions import ClientError
+
+if USE_AWS_DB:
+
+    AWS_KEYS_CSV = os.getenv(
+        "AWS_KEYS_CSV",
+        os.path.join(os.path.dirname(__file__), "accessKeys.csv")
+    )
+
+    dynamodb = boto3.resource(
+        "dynamodb",
+        region_name=os.getenv("AWS_REGION", "us-east-1"),
+        **load_aws_credentials_from_csv(AWS_KEYS_CSV),
+    )
+
+    try:
+        flightsheets_table = dynamodb.Table("RigCloudFlightsheets")
+        flightsheets_table.load()  # DescribeTable
+        log("[AWS] Flightsheets table found")
+
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ResourceNotFoundException":
+            log("[AWS] Flightsheets table missing — creating it")
+
+            flightsheets_table = dynamodb.create_table(
+                TableName="RigCloudFlightsheets",
+                KeySchema=[
+                    {"AttributeName": "FlightsheetId", "KeyType": "HASH"},
+                    {"AttributeName": "GpuId", "KeyType": "RANGE"},
+                ],
+                AttributeDefinitions=[
+                    {"AttributeName": "FlightsheetId", "AttributeType": "S"},
+                    {"AttributeName": "GpuId", "AttributeType": "N"},
+                ],
+                BillingMode="PAY_PER_REQUEST",
+            )
+
+            flightsheets_table.wait_until_exists()
+            log("[AWS] Flightsheets table created")
+
+        else:
+            raise
+
+
+from botocore.exceptions import ClientError
+
+def ensure_flightsheets_table(dynamodb):
+    try:
+        table = dynamodb.Table("RigCloudFlightsheets")
+        table.load()  # forces DescribeTable
+        return table
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ResourceNotFoundException":
+            raise RuntimeError(
+                "DynamoDB table RigCloudFlightsheets does not exist"
+            )
+        raise
+
+def delete_flightsheet_if_exists(flightsheet_id: str) -> int:
+    log(f"[FS DELETE] deleting flightsheet {flightsheet_id}")
+    deleted = 0
+    last_key = None
+
+    while True:
+        args = {
+            "KeyConditionExpression": Key("FlightsheetId").eq(flightsheet_id)
+        }
+        if last_key:
+            args["ExclusiveStartKey"] = last_key
+
+        resp = flightsheets_table.query(**args)
+
+        with flightsheets_table.batch_writer() as batch:
+            for item in resp.get("Items", []):
+                # Use only the primary key for deletion
+                batch.delete_item(
+                    Key={
+                        "FlightsheetId": item["FlightsheetId"],
+                        "GpuId": item["GpuId"],
+                    }
+                )
+                deleted += 1
+
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+
+    return deleted
 
 # ================================================================
 # BROADCAST LOOP
@@ -342,6 +504,82 @@ async def send_command(payload: dict):
     }
 
 # ================================================================
+# FLIGHTSHEETS API
+# ================================================================
+
+@router.get("/api/flightsheets")
+def get_flightsheets():
+    if not flightsheets_table:
+        return []
+    
+    try:
+        resp = flightsheets_table.scan()
+        items = resp.get("Items", [])
+        
+        log(f"[FS GET] Returning {len(items)} flightsheet items")
+        return items
+        
+    except Exception as e:
+        log(f"[FS GET ERROR] Exception: {e}")
+        return []
+
+
+@router.put("/api/flightsheets/{flightsheet_id}")
+def put_flightsheet(flightsheet_id: str, payload: FlightSheetPutIn):
+    log(f"[FS PUT] Saving flightsheet: {flightsheet_id}")
+    
+    if not flightsheets_table:
+        raise HTTPException(503, "Flightsheets table not available")
+
+    now = int(time.time())
+
+    # 1️⃣ Delete existing rows
+    deleted = delete_flightsheet_if_exists(flightsheet_id)
+
+    # 2️⃣ Insert new items
+    inserted = 0
+    with flightsheets_table.batch_writer() as batch:
+        for e in payload.entries:
+            item = {
+                "FlightsheetId": flightsheet_id,
+                "GpuId": int(e.gpu),
+                "Key": e.key.strip().upper(),
+                "Value": e.value,
+                "UpdatedAt": now,
+            }
+            
+            batch.put_item(Item=item)
+            inserted += 1
+    
+    log(f"[FS PUT] Saved {inserted} entries for flightsheet {flightsheet_id}")
+    
+    return {
+        "status": "ok",
+        "deleted": deleted,
+        "inserted": inserted,
+    }
+
+
+@router.delete("/api/flightsheets/{flightsheet_id}")
+def delete_flightsheet(flightsheet_id: str):
+    log(f"[FS DELETE] Deleting flightsheet: {flightsheet_id}")
+    
+    if not flightsheets_table:
+        raise HTTPException(503, "Flightsheets table not available")
+
+    try:
+        deleted = delete_flightsheet_if_exists(flightsheet_id)
+        return {
+            "status": "deleted",
+            "flightsheet_id": flightsheet_id,
+            "deleted_count": deleted
+        }
+        
+    except Exception as e:
+        log(f"[FS DELETE ERROR] Error: {e}")
+        raise HTTPException(500, f"Failed to delete flightsheet: {e}")
+
+# ================================================================
 # WEBSOCKET ENDPOINT
 # ================================================================
 
@@ -442,6 +680,12 @@ app.mount(
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return FileResponse(STATIC_DIR / "favicon.ico", media_type="image/x-icon")
+
+@app.get("/api/config")
+def get_config():
+    return {
+        "basePath": BASE_PATH
+    }
 
 # ================================================================
 # MQTT CALLBACKS

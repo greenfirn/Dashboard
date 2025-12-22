@@ -1,18 +1,16 @@
 https://www.python.org/downloads/windows/
 
-requirements.txt
-fastapi
-uvicorn
-paho-mqtt
-python-multipart
-aiofiles
-websockets
-jinja2
-psutil <-- for auto starting mqtt on windows only
+https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
 
-python -m pip install -r requirements.txt
+# create virtual environment in project root:
+py -3.11 -m venv .venv
+.venv\Scripts\activate
 
-add to path:
+# confirm version
+python --version
 
-C:\Users\<your-username>\AppData\Local\Python\pythoncore-3.14-64\Scripts
+# install dependencies into the venv
+python -m pip install --upgrade pip
+python -m pip install fastapi uvicorn pydantic boto3
+
 
