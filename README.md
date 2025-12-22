@@ -51,13 +51,15 @@ aws advanced setup:
 - caddy handles certificates, routing
 - running server.py on aws lambda might be possible havnt looked into it yet
 
+'flightsheet' just saves text for now
+
+![Dashboard flightsheet](Screenshot-flightsheet.png)
+
 server start, client connect, disconnect...
+- timing could use some tweaking...
 - rig names are preserved on browser restarts
 - stats are collected on rigs only when webpage is active
 
 ![Dashboard connect](Screenshot-client-connect-disconnect.png)
-
-- created a server client mqtt setup before in c# for a Alexa app that could send controls to my local PC
-- already familiar with the general setup, python is new to me though
 
 developed with assistance from ChatGPT.
