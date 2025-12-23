@@ -30,6 +30,9 @@ Bzminer...
 
 ![Dashboard flightsheet](images/Screenshot-flightsheet.png)
 
+miner update:
+![Dashboard miner version](images/Screenshot-miner-version.png)
+
 server start, client connect, disconnect...
 - rig names are preserved on browser restarts
 - stats are collected on rigs only when webpage is active
