@@ -423,13 +423,13 @@ h1 {
 }
 
 /* ==================================================
-   Flightsheets Modal - 50% width
+   Flightsheets Modal - 80% width
 ================================================== */
 
 /* Flightsheets modal dialog - 50% width */
 #fs-modal .cmd-dialog {
-    width: 50% !important;
-    max-width: 600px !important;
+    width: 80% !important;
+    max-width: 900px !important;
     min-width: 400px !important;
     height: 700px !important;
     max-height: 85vh !important;
