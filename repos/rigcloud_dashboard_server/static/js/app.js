@@ -988,7 +988,8 @@ function applyFlightsheet() {
     }
 
     // ---- wrappers (different commands based on mode) ----
-    let firstLine, lastLine, cmdLine;
+    /*
+	let firstLine, lastLine, cmdLine;
     
     switch(currentActionMode) {
         case "all":
@@ -1025,8 +1026,9 @@ function applyFlightsheet() {
         lastLine,
         cmdLine
     ].join("\n");
-
-    document.getElementById("cmd-input").value = finalText;
+    */
+	
+    document.getElementById("cmd-input").value = raw;
 
     closeFlightsheetsModal();
     openCmdModal();
