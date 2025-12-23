@@ -5,8 +5,6 @@ Rigel, XMRig...
 Bzminer...
 ![Dashboard Screenshot](images/Screenshot.png)
 
-- added save/delete/apply 'flightsheet' using aws dynamodb
-- create a iam profile with db access and save accessKeys.cvs in root of app
 - click a row shows more details, click title hides row, click name to restore hidden 
 - hold ctrl click rigname to select individual rows
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
@@ -23,6 +21,8 @@ Bzminer...
 - rigel shows miner and pool hashrate
 - api settings need to be in cmd line, bzminer works by default
 - see api-settings.txt
+- save/delete/apply 'flightsheet' using aws dynamodb
+- create a aws iam profile with db access and save accessKeys.cvs in root of app
 
 'flightsheet' 
 - saves as text for now
