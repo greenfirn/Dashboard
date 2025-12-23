@@ -315,36 +315,83 @@ def collect_bzminer_stats():
             data = json.loads(resp.read().decode("utf-8"))
     except Exception as e:
         return {"status": "offline", "error": str(e)}
-
+    
+    # Get the method to ensure it's fullstatus
+    method = data.get("method", "")
+    if method != "fullstatus":
+        # Try to get basic status if available
+        return {"status": "unexpected_format", "data": data}
+    
     pools = data.get("pools") or []
+    devices = data.get("devices") or []
+    
     algorithms = []
     
-    # Collect data per algorithm from each pool
+    # Process each pool
     for pool in pools:
-        algo = pool.get("algorithm")
-        if not algo:
-            continue
+        pool_id = pool.get("id", -1)
+        
+        # Find algorithm name for this pool
+        pool_algo = None
+        # Check device hash rates to determine which algorithm is active
+        for device in devices:
+            device_pools = device.get("pool", [])
+            if isinstance(device_pools, list) and pool_id in device_pools:
+                # Look for non-zero hashrate to determine active algorithm
+                device_hr = device.get("hashrate", [])
+                if isinstance(device_hr, list) and len(device_hr) > 0:
+                    # Check if this device has non-zero hashrate for this pool
+                    pool_index = device_pools.index(pool_id) if pool_id in device_pools else -1
+                    if pool_index >= 0 and pool_index < len(device_hr) and device_hr[pool_index] > 0:
+                        # Try to get algorithm from pool data or guess from context
+                        pool_algo = pool.get("algorithm")
+                        break
+        
+        if not pool_algo:
+            pool_algo = pool.get("algorithm", "unknown")
+        
+        # Calculate total hashrate for this pool from all devices
+        total_hashrate = 0
+        for device in devices:
+            device_pools = device.get("pool", [])
+            device_hr = device.get("hashrate", [])
             
-        pool_url = pool.get("url", "").split("://")[-1].split(":")[0]
-        raw_hash = pool.get("hashrate")
+            if isinstance(device_pools, list) and isinstance(device_hr, list):
+                # Find if this device mines on this pool
+                for i, p_id in enumerate(device_pools):
+                    if p_id == pool_id and i < len(device_hr):
+                        total_hashrate += device_hr[i]
         
-        # BzMiner reports in H/s directly
-        hashrate_hs = float(raw_hash) if raw_hash else None
+        # Get pool URL
+        pool_url = ""
+        current_url = pool.get("current_url", "")
+        if current_url:
+            # Extract host from URL
+            url_parts = current_url.split("://")
+            if len(url_parts) > 1:
+                host_part = url_parts[1].split(":")[0]
+                pool_url = host_part.split(".")[-2] if "." in host_part else host_part
         
-        algo_data = {
-            "algorithm": algo,
-            "pool": pool_url,
-            "hashrate_hs": hashrate_hs,
-            "accepted_shares": pool.get("valid_solutions"),
-            "rejected_shares": pool.get("rejected_solutions"),
-            "workers": pool.get("workers")
-        }
-        
-        algorithms.append(algo_data)
-
+        # Only include active pools (with hashrate > 0)
+        if total_hashrate > 0 or pool.get("status", 0) > 0:
+            algo_data = {
+                "algorithm": pool_algo,
+                "pool": pool_url,
+                "hashrate_hs": total_hashrate if total_hashrate > 0 else None,
+                "accepted_shares": pool.get("valid_solutions"),
+                "rejected_shares": pool.get("rejected_solutions"),
+                "stale_shares": pool.get("stale_solutions"),
+                "workers": None  # BzMiner doesn't provide workers count in this format
+            }
+            algorithms.append(algo_data)
+    
     return {
         "status": "ok",
-        "uptime_s": data.get("uptime_s") or (pools[0].get("uptime_s") if pools else None),
+        "miner": "bzminer",
+        "bzminer_version": data.get("bzminer_version"),
+        "rig_name": data.get("rig_name"),
+        "uptime_s": data.get("uptime_s"),
+        "total_devices": len(devices),
         "algorithms": algorithms
     }
 
