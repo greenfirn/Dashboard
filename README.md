@@ -2,7 +2,7 @@ html Dashboard for ubuntu server rigs...
 
 - added save/delete/apply 'flightsheet' using aws dynamodb
 - create a iam profile with db access and save accessKeys.cvs in root of app
-- click a row shows more details about docker containers running etc
+- click a row shows more details, click title hides row, click name to restore hidden 
 - hold ctrl click rigname to select individual rows
 - cpu / gpu services start, stop, restart, customisable in rigcloud_cmd.sh
 - see run-a-miner-services.sh and run-a-miner-script.sh or
@@ -17,7 +17,7 @@ html Dashboard for ubuntu server rigs...
 ** most recent files in repos **
 - hashrates shown in dashboard:
 - xmrig, bzminer, rigel, srbminer, lolminer, wildrig, onezerominer, gminer
-- only first algo atm
+- rigel shows miner and pool hashrate
 - api settings need to be in cmd line,
 - bzminer works by default
 - see api-settings.txt
@@ -51,13 +51,17 @@ aws advanced setup:
 - caddy handles certificates, routing
 - running server.py on aws lambda might be possible havnt looked into it yet
 
+'flightsheet' 
+- saves as text for now
+- apply copies text over to send cmd and wraps it in tee EOF restart
+
+![Dashboard flightsheet](Screenshot-flightsheet.png)
+
 server start, client connect, disconnect...
+- timing could use some tweaking...
 - rig names are preserved on browser restarts
 - stats are collected on rigs only when webpage is active
 
 ![Dashboard connect](Screenshot-client-connect-disconnect.png)
-
-- created a server client mqtt setup before in c# for a Alexa app that could send controls to my local PC
-- already familiar with the general setup, python is new to me though
 
 developed with assistance from ChatGPT.

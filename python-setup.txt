@@ -2,6 +2,8 @@ https://www.python.org/downloads/windows/
 
 https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
 
+# visual studio can create a environment for you
+
 # create virtual environment in project root:
 py -3.11 -m venv .venv
 .venv\Scripts\activate
