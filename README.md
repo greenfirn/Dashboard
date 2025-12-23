@@ -1,5 +1,6 @@
 html Dashboard for ubuntu server rigs...
 
+![Dashboard Screenshot-2](images/Screenshot-2.png)
 ![Dashboard Screenshot](images/Screenshot.png)
 
 - added save/delete/apply 'flightsheet' using aws dynamodb
