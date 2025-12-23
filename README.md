@@ -37,4 +37,4 @@ server start, client connect, disconnect...
 
 ![Dashboard connect](images/Screenshot-client-connect-disconnect.png)
 
-developed with assistance from ChatGPT.
+developed with assistance from ChatGPT.com and chat.deepseek.com
