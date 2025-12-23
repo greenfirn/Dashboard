@@ -28,13 +28,6 @@ raspberry pi:
 - mqtt, website host/backend
 - some notes, config files in raspberry pi - docker
 
-aws advanced setup:
-- amazon web services has its own free tier mqtt service, in iot section
-- requires unique certificates on website backend and all the mining/AI rigs
-- duckdns or similar for connecting to your public ip
-- caddy handles certificates, routing
-- running server.py on aws lambda might be possible havnt looked into it yet
-
 'flightsheet' 
 - saves as text for now
 - apply copies text over to send cmd and wraps it in tee EOF restart
