@@ -13,6 +13,7 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY accessKeys.csv .
 COPY rigcloud_dashboard_server.py .
 COPY static ./static
 

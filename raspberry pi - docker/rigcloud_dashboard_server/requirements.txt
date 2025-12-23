@@ -1,3 +1,4 @@
 paho-mqtt
 fastapi
 uvicorn[standard]
+boto3
