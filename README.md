@@ -1,5 +1,7 @@
 html Dashboard for ubuntu server rigs...
 
+![Dashboard Screenshot](images/Screenshot.png)
+
 - added save/delete/apply 'flightsheet' using aws dynamodb
 - create a iam profile with db access and save accessKeys.cvs in root of app
 - click a row shows more details, click title hides row, click name to restore hidden 
@@ -11,8 +13,6 @@ html Dashboard for ubuntu server rigs...
 - index.html serves dashboard, customise colors etc in .css file
 - working on more capabilities, design is just what chatgpt suggested for dark theme
 - CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service, Containers running, Miners
-
-![Dashboard Screenshot](images/Screenshot.png)
 
 ** most recent files in repos **
 - hashrates shown in dashboard:
