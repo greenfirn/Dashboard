@@ -26,7 +26,7 @@ Bzminer...
 
 'flightsheet' 
 - saves as text for now
-- apply copies text over to send cmd and wraps it in tee EOF restart
+- apply copies text over to send cmd dialog
 
 ![Dashboard flightsheet](images/Screenshot-flightsheet.png)
 
