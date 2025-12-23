@@ -18,7 +18,7 @@ Bzminer...
 - CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service, Containers running, Miners
 
 ** most recent files in repos **
-- hashrates shown in dashboard:
+- hashrate, accepted/rejected shares in dashboard:
 - xmrig, bzminer, rigel, srbminer, lolminer, wildrig, onezerominer, gminer
 - rigel shows miner and pool hashrate
 - api settings need to be in cmd line, bzminer works by default
