@@ -42,5 +42,5 @@ developed with assistance from ChatGPT.com and chat.deepseek.com
 if you find any part of this project useful...
 
 ☕ Buy me a coffee:
-<img src="https://assets.coingecko.com/coins/images/279/standard/ethereum.png?1696501628" width="20" height="20" /> <img src="https://raw.githubusercontent.com/octaspace/logos/main/logo.svg" width="16" height="16" /> <img src="https://assets.coingecko.com/coins/images/30959/standard/CLORE_Logo_200x200_PNG.png?1696529798" width="16" height="16" /> `0xe65b5d7B7D43D77eF585CCF4a675832d0d23f806`
+<img src="https://assets.coingecko.com/coins/images/279/standard/ethereum.png?1696501628" width="20" height="20" /> <img src="https://raw.githubusercontent.com/octaspace/logos/main/logo.svg" width="16" height="16" /> <img src="https://assets.coingecko.com/coins/images/30959/standard/CLORE_Logo_200x200_PNG.png?1696529798" width="16" height="16" /> ETH: `0xe65b5d7B7D43D77eF585CCF4a675832d0d23f806`
 
