@@ -12,7 +12,7 @@ html Dashboard for ubuntu server rigs...
 - working on more capabilities, design is just what chatgpt suggested for dark theme
 - CPU temp, CPU Utl, LA, RAM, GPU temp, GPU UTL, GPU Watts, GPU Fan, VRAM, Core, Mem, CPU/GPU service, Containers running, Miners
 
-![Dashboard Screenshot](Screenshot.png)
+![Dashboard Screenshot](images/Screenshot.png)
 
 ** most recent files in repos **
 - hashrates shown in dashboard:
@@ -25,13 +25,13 @@ html Dashboard for ubuntu server rigs...
 - saves as text for now
 - apply copies text over to send cmd and wraps it in tee EOF restart
 
-![Dashboard flightsheet](Screenshot-flightsheet.png)
+![Dashboard flightsheet](images/Screenshot-flightsheet.png)
 
 server start, client connect, disconnect...
 - timing could use some tweaking...
 - rig names are preserved on browser restarts
 - stats are collected on rigs only when webpage is active
 
-![Dashboard connect](Screenshot-client-connect-disconnect.png)
+![Dashboard connect](images/Screenshot-client-connect-disconnect.png)
 
 developed with assistance from ChatGPT.
