@@ -21,12 +21,6 @@ html Dashboard for ubuntu server rigs...
 - api settings need to be in cmd line,
 - bzminer works by default
 - see api-settings.txt
-- in rigcloud_cmd.sh 'Both' is meant to start, stop, restart
-- a 3rd CPU and GPU service but not using it
-
-raspberry pi:
-- mqtt, website host/backend
-- some notes, config files in raspberry pi - docker
 
 'flightsheet' 
 - saves as text for now
