@@ -64,9 +64,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Command modal buttons
     document.getElementById("btn-cmd-send")?.addEventListener("click", submitCmd);
     document.getElementById("btn-cmd-cancel")?.addEventListener("click", closeCmdModal);
+	document.getElementById('btn-cmd-clear').addEventListener('click', function() {
+        document.getElementById('cmd-input').value = '';
+        document.getElementById('cmd-output').textContent = '';
+    });
 
     // Flightsheets modal buttons
-    document.getElementById("btn-save-fs")?.addEventListener("click", saveFlightsheetFromDialog);
+    document.getElementById('btn-clear-fs').addEventListener('click', function() {
+		document.getElementById("fs-raw").value = '';
+            // Reset any active states
+        document.querySelectorAll('.selected').forEach(item => {
+            item.classList.remove('active');
+			item.classList.remove('selected');
+			item.removeAttribute('aria-selected');
+        });
+		document.getElementById("fs-name").value = '';
+    });
+	document.getElementById("btn-save-fs")?.addEventListener("click", saveFlightsheetFromDialog);
     document.getElementById("btn-apply-fs")?.addEventListener("click", applyFlightsheet);
     document.getElementById("btn-delete-fs")?.addEventListener("click", deleteFlightsheet);
     document.getElementById("btn-close-fs")?.addEventListener("click", closeFlightsheetsModal);

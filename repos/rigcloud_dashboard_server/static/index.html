@@ -86,48 +86,51 @@ nvidia-smi
             <pre id="cmd-output" class="cmd-output"></pre>
 
             <div class="cmd-footer">
-                <button class="cmd-btn ok" id="btn-cmd-send">Send</button>
-                <button class="cmd-btn cancel" id="btn-cmd-cancel">Close</button>
+				<button class="cmd-btn ok" id="btn-cmd-send">Send</button>
+                <button class="cmd-btn" id="btn-cmd-clear">Clear</button>
+				<button class="cmd-btn cancel" id="btn-cmd-cancel">Close</button>
             </div>
         </div>
     </div>
 
-    <!-- ================= FLIGHTSHEETS MODAL ================= -->
-    <div id="fs-modal" class="cmd-modal hidden">
-        <div class="cmd-dialog">
-            <div class="cmd-header">
-                <span>Flightsheets</span>
+<div class="cmd-modal hidden" id="fs-modal">
+    <div class="cmd-dialog">
+        <div class="cmd-header">
+            <span>Flightsheets</span>
+        </div>
+
+        <div class="cmd-body">
+            <!-- Flightsheets list (TOP) -->
+            <div id="fs-list" class="fs-list">
+                <!-- populated by JS -->
             </div>
 
-            <div class="cmd-body">
-                <!-- Flightsheets list (TOP) -->
-                <div id="fs-list" class="fs-list">
-                    <!-- populated by JS -->
-                </div>
+            <!-- Raw editor (MIDDLE) -->
+            <textarea
+                id="fs-raw"
+                spellcheck="false"
+                placeholder="# Flightsheet raw content"
+            ></textarea>
+        </div>
 
-                <!-- Raw editor (MIDDLE) -->
-                <textarea
-                    id="fs-raw"
-                    spellcheck="false"
-                    placeholder="# Flightsheet raw content"
-                ></textarea>
-            </div>
-
-            <!-- FOOTER: name + buttons -->
-            <div class="cmd-footer">
-                <input
-                    type="text"
-                    id="fs-name"
-                    placeholder="Flightsheet name"
-                    autocomplete="off"
-                />
+        <!-- FOOTER: name + buttons -->
+        <div class="cmd-footer">
+            <input
+                type="text"
+                id="fs-name"
+                placeholder="Flightsheet name"
+                autocomplete="off"
+            />
+            <div class="cmd-btn-row">
                 <button class="cmd-btn" id="btn-save-fs">Save</button>
                 <button class="cmd-btn ok" id="btn-apply-fs">Apply</button>
-                <button class="cmd-btn cancel" id="btn-close-fs">Close</button>
-                <button class="cmd-btn" id="btn-delete-fs" style="background: #b00020; color: white;">Delete</button>
+                <button class="cmd-btn" id="btn-delete-fs">Delete</button>
+				<button class="cmd-btn" id="btn-clear-fs">Clear</button>
+				<button class="cmd-btn cancel" id="btn-close-fs">Close</button>
             </div>
         </div>
     </div>
+</div>
 
     <!-- ================= RIG HEADER ================= -->
     <div class="rig-header">
