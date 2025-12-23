@@ -926,28 +926,58 @@ function renderFlightsheets() {
     const list = document.getElementById("fs-list");
     list.innerHTML = "";
 
-    for (const fs of flightsheets) {
+    // Natural sort (handles numbers in names)
+    const sortedFlightsheets = [...flightsheets].sort((a, b) => {
+        return naturalCompare(a.FlightsheetId, b.FlightsheetId);
+    });
+
+    for (const fs of sortedFlightsheets) {
         const row = document.createElement("div");
         row.className = "fs-item";
         row.textContent = fs.FlightsheetId;
+        
+        // Store data for easy access
+        row.dataset.id = fs.FlightsheetId;
+        row.dataset.value = fs.Value || "";
 
         row.addEventListener("click", () => {
-            // clear previous selection
+            // Clear previous selection
             document
-                .querySelectorAll("#fs-list .fs-item")
+                .querySelectorAll("#fs-list .fs-item.selected")
                 .forEach(e => e.classList.remove("selected"));
 
             row.classList.add("selected");
-
             selectedFlightsheetId = fs.FlightsheetId;
 
-            // 🔴 THIS IS THE FIX
+            // Populate form fields
             document.getElementById("fs-name").value = fs.FlightsheetId;
             document.getElementById("fs-raw").value = fs.Value || "";
         });
 
         list.appendChild(row);
     }
+}
+
+// Helper function for natural sorting (numbers in strings)
+function naturalCompare(a, b) {
+    const ax = [], bx = [];
+    
+    a.replace(/(\d+)|(\D+)/g, (_, $1, $2) => {
+        ax.push([$1 || Infinity, $2 || ""]);
+    });
+    
+    b.replace(/(\d+)|(\D+)/g, (_, $1, $2) => {
+        bx.push([$1 || Infinity, $2 || ""]);
+    });
+    
+    while (ax.length && bx.length) {
+        const an = ax.shift();
+        const bn = bx.shift();
+        const nn = (an[0] - bn[0]) || an[1].localeCompare(bn[1]);
+        if (nn) return nn;
+    }
+    
+    return ax.length - bx.length;
 }
 
 async function saveFlightsheet(flightsheetId, entries) {
