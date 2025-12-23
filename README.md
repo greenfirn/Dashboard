@@ -18,8 +18,7 @@ html Dashboard for ubuntu server rigs...
 - hashrates shown in dashboard:
 - xmrig, bzminer, rigel, srbminer, lolminer, wildrig, onezerominer, gminer
 - rigel shows miner and pool hashrate
-- api settings need to be in cmd line,
-- bzminer works by default
+- api settings need to be in cmd line, bzminer works by default
 - see api-settings.txt
 
 'flightsheet' 
