@@ -20,6 +20,7 @@ Bzminer...
 - xmrig, bzminer, rigel, srbminer, lolminer, wildrig, onezerominer, gminer
 - rigel shows miner and pool hashrate
 - api settings need to be in cmd line, bzminer works by default
+- srbminer standard cpu/gpu port 21550, extra cpu only port 21551
 - see api-settings.txt
 - save/delete/apply 'flightsheet' using aws dynamodb
 - create a aws iam profile with db access and save accessKeys.cvs in root of app
@@ -41,8 +42,6 @@ server start, client connect, disconnect...
 ![Dashboard connect](images/Screenshot-client-connect-disconnect.png)
 
 developed with assistance from ChatGPT.com and chat.deepseek.com
-
-if you find any part of this project useful...
 
 ☕ Buy me a coffee:
 <img src="https://assets.coingecko.com/coins/images/279/standard/ethereum.png?1696501628" width="20" height="20" /> <img src="https://raw.githubusercontent.com/octaspace/logos/main/logo.svg" width="16" height="16" /> <img src="https://assets.coingecko.com/coins/images/30959/standard/CLORE_Logo_200x200_PNG.png?1696529798" width="16" height="16" /> `0xe65b5d7B7D43D77eF585CCF4a675832d0d23f806`
