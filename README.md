@@ -20,6 +20,7 @@ Bzminer...
 - xmrig, bzminer, rigel, srbminer, lolminer, wildrig, onezerominer, gminer
 - rigel shows miner and pool hashrate
 - api settings need to be in cmd line, bzminer works by default
+- srbminer standard cpu/gpu port 21550, extra cpu only port 21551
 - see api-settings.txt
 - save/delete/apply 'flightsheet' using aws dynamodb
 - create a aws iam profile with db access and save accessKeys.cvs in root of app
