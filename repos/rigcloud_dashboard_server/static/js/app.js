@@ -521,7 +521,7 @@ const DataHelper = {
         
         return algoMap;
     },
-    
+
     // Get miner summary with versions
     getMinerSummary: (data) => {
         const summary = [];
@@ -635,9 +635,9 @@ const DataHelper = {
     },
     
     // Get service status with CSS class
-    getFormattedService: (serviceStatus) => {
+    getFormattedService: (serviceStatus, serviceType = "cpu") => {
         return {
-            text: "CPU", // Could be "CPU" or "GPU" based on service
+            text: serviceType.toUpperCase(), // "CPU" or "GPU"
             class: serviceStatus.isActive ? "service-ok" : "service-bad"
         };
     },
@@ -673,6 +673,165 @@ const DataHelper = {
         return clean;
     }
 };
+
+   
+    // ... KEEP ALL YOUR EXISTING CODE AS IS, but DON'T include:
+    // - getCpuShares
+    // - getGpuShares  
+    // - getCpuColumnContent
+    // - getGpuColumnContent
+    // - getSharesClass
+    // - getFormattedShares
+    // ... until AFTER the object is defined
+
+
+// =====================================================
+// ADD CIRCULAR DEPENDENCY METHODS AFTER OBJECT IS DEFINED
+// =====================================================
+
+// Now that DataHelper is defined, we can safely reference it
+DataHelper.getCpuShares = (data) => {
+    let accepted = 0;
+    let rejected = 0;
+    
+    const algorithms = DataHelper.getAllAlgorithms(data);
+    algorithms.forEach(algo => {
+        // Check if this is a CPU miner or CPU portion
+        if (algo.minerKey === "miner_xmrig" || 
+            algo.minerKey === "miner_srbminer" || 
+            (algo.minerKey === "miner_srbminer" && DataHelper.getCpuHashrateHS(algo) > 0)) {
+            accepted += DataHelper.getAcceptedShares(algo) || 0;
+            rejected += DataHelper.getRejectedShares(algo) || 0;
+        }
+    });
+    
+    return {
+        accepted: accepted,
+        rejected: rejected,
+        ratio: rejected > 0 ? (rejected / (accepted + rejected)).toFixed(2) : 0,
+        string: `${accepted}/${rejected}`
+    };
+};
+
+DataHelper.getGpuShares = (data) => {
+    let accepted = 0;
+    let rejected = 0;
+    
+    const algorithms = DataHelper.getAllAlgorithms(data);
+    algorithms.forEach(algo => {
+        // Check if this is a GPU miner or GPU portion
+        if (algo.minerKey !== "miner_xmrig" && 
+            !(algo.minerKey === "miner_srbminer" && DataHelper.getCpuHashrateHS(algo) > 0 && DataHelper.getGpuHashrateHS(algo) === 0)) {
+            accepted += DataHelper.getAcceptedShares(algo) || 0;
+            rejected += DataHelper.getRejectedShares(algo) || 0;
+        }
+    });
+    
+    return {
+        accepted: accepted,
+        rejected: rejected,
+        ratio: rejected > 0 ? (rejected / (accepted + rejected)).toFixed(2) : 0,
+        string: `${accepted}/${rejected}`
+    };
+};
+
+DataHelper.getSharesClass = (sharesData) => {
+    if (!sharesData || sharesData.accepted === 0) return "status-unknown";
+    
+    const rejectionRate = sharesData.ratio || 0;
+    
+    if (rejectionRate === 0) return "shares-perfect";        // 0% rejected
+    if (rejectionRate < 0.01) return "shares-good";         // < 1% rejected
+    if (rejectionRate < 0.03) return "shares-warning";      // < 3% rejected
+    return "shares-bad";                                    // >= 3% rejected
+};
+
+DataHelper.getFormattedShares = (sharesData, type = "cpu") => {
+    if (!sharesData || (sharesData.accepted === 0 && sharesData.rejected === 0)) {
+        return {
+            value: "0/0",
+            class: "status-unknown"
+        };
+    }
+    
+    const sharesClass = DataHelper.getSharesClass(sharesData);
+    return {
+        value: `${sharesData.accepted}/${sharesData.rejected}`,
+        class: sharesClass
+    };
+};
+
+DataHelper.getCpuColumnContent = (data) => {
+    const cpuShares = DataHelper.getCpuShares(data);
+    if (cpuShares.accepted > 0 || cpuShares.rejected > 0) {
+        const formatted = DataHelper.getFormattedShares(cpuShares, "cpu");
+        return {
+            html: `<span class="${formatted.class}" title="CPU Shares (Accepted/Rejected)">${formatted.value}</span>`,
+            class: formatted.class
+        };
+    }
+    // Fallback to service status
+    const cpuService = DataHelper.getServiceStatus(data, "cpu_service_name");
+    const formattedService = DataHelper.getFormattedService(cpuService, "cpu");
+    return {
+        html: `<span class="${formattedService.class}">CPU</span>`,
+        class: formattedService.class
+    };
+};
+
+DataHelper.getGpuColumnContent = (data) => {
+    const gpuShares = DataHelper.getGpuShares(data);
+    if (gpuShares.accepted > 0 || gpuShares.rejected > 0) {
+        const formatted = DataHelper.getFormattedShares(gpuShares, "gpu");
+        return {
+            html: `<span class="${formatted.class}" title="GPU Shares (Accepted/Rejected)">${formatted.value}</span>`,
+            class: formatted.class
+        };
+    }
+    // Fallback to service status
+    const gpuService = DataHelper.getServiceStatus(data, "gpu_service_name");
+    const formattedService = DataHelper.getFormattedService(gpuService, "gpu");
+    return {
+        html: `<span class="${formattedService.class}">GPU</span>`,
+        class: formattedService.class
+    };
+};
+
+// Also check if getAllAlgorithms has circular dependencies - if it does, move it too
+// But looking at your code, getAllAlgorithms calls getActiveMiners which calls other methods
+// So let's move it as well to be safe:
+
+// First, remove it from the main object (if it's there) and redefine it:
+DataHelper.getAllAlgorithms = (data) => {
+    const algorithms = [];
+    const activeMiners = DataHelper.getActiveMiners(data);
+    activeMiners.forEach(miner => {
+        if (miner.data.algorithms) {
+            miner.data.algorithms.forEach(algo => {
+                algorithms.push({
+                    ...algo,
+                    minerKey: miner.key,
+                    minerName: miner.name,
+                    minerUptime: miner.data.uptime_s,
+                    minerVersion: miner.data.miner_version,
+                    cudaDriver: miner.data.cuda_driver || miner.data.cuda_driver_version
+                });
+            });
+        }
+    });
+    return algorithms;
+};
+
+// =====================================================
+// Debug code
+// =====================================================
+
+console.log("DataHelper defined. Checking methods...");
+console.log("getCpuColumnContent exists?", typeof DataHelper.getCpuColumnContent);
+console.log("getGpuColumnContent exists?", typeof DataHelper.getGpuColumnContent);
+console.log("getCpuShares exists?", typeof DataHelper.getCpuShares);
+console.log("getGpuShares exists?", typeof DataHelper.getGpuShares);
+console.log("getAllAlgorithms exists?", typeof DataHelper.getAllAlgorithms);
 
 // =====================================================
 // NETWORK COMMUNICATION (HTTP/WebSocket)
@@ -751,6 +910,7 @@ function initWebSocket() {
 
     ws.onclose = () => setTimeout(initWebSocket, 5000);
 }
+
 
 /*
 async function fetchRigsOnce() {
@@ -1681,6 +1841,9 @@ function render() {
         });
 
         main.appendChild(nameEl);
+		
+        const cpuColumn = DataHelper.getCpuColumnContent(d);
+        const gpuColumn = DataHelper.getGpuColumnContent(d);
 
         // Create column HTML strings
         const columnHTMLs = [
@@ -1695,8 +1858,8 @@ function render() {
             `<div class="metric">${vramGB}</div>`,
             `<div class="metric">${coreMHz}</div>`,
             `<div class="metric">${memMHz}</div>`,
-            `<div class="metric"><span class="${cpuServiceClass}">CPU</span></div>`,
-            `<div class="metric"><span class="${gpuServiceClass}">GPU</span></div>`,
+            `<div class="metric">${cpuColumn.html}</div>`,
+            `<div class="metric">${gpuColumn.html}</div>`,
             `<div class="metric">${dockerList.length}</div>`,
             `<div class="metric metric-left">${finalMinerSummary}</div>`
         ];

@@ -37,6 +37,12 @@ h1 {
     font-size: 18px;
 }
 
+/* Add to your CSS file */
+.shares-perfect { color: #00ff00; }      /* 0% rejected - bright green */
+.shares-good { color: #90ee90; }         /* < 1% rejected - light green */
+.shares-warning { color: #ffa500; }      /* < 3% rejected - orange */
+.shares-bad { color: #ff0000; }          /* >= 3% rejected - red */
+.status-unknown { color: #888888; }      /* unknown/no shares - gray */
 /* ==================================================
    Action Bar
 ================================================== */
