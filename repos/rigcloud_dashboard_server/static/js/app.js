@@ -38,14 +38,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     });
 
-// Add header click functionality
+    // Add header click functionality
     setupHeaderClickHandlers();
 
-// Load saved hidden columns state
+    // Load saved hidden columns state
     loadColumnState();
 
-// Apply hidden state to existing DOM
-    applyHiddenColumnsToDOM(); // Changed from restoreColumnStates()
+    // Apply hidden state to existing DOM
+    applyHiddenColumnsToDOM();
     
     // Toggle select all
     document.getElementById("btn-toggle-select")?.addEventListener("click", toggleSelectAll);
@@ -93,13 +93,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // Modal close on backdrop click
-    document.getElementById("cmd-modal")?.addEventListener("click", (e) => {
-        if (e.target.id === "cmd-modal") closeCmdModal();
-    });
+    //document.getElementById("cmd-modal")?.addEventListener("click", (e) => {
+    //    if (e.target.id === "cmd-modal") closeCmdModal();
+    //});
 
-    document.getElementById("fs-modal")?.addEventListener("click", (e) => {
-        if (e.target.id === "fs-modal") closeFlightsheetsModal();
-    });
+    //document.getElementById("fs-modal")?.addEventListener("click", (e) => {
+    //    if (e.target.id === "fs-modal") closeFlightsheetsModal();
+    //});
 
     // Escape key to close modals
     document.addEventListener("keydown", (e) => {
@@ -131,7 +131,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Now API is guaranteed to be set
     initWebSocket();
-    fetchRigsOnce();
+    //fetchRigsOnce();
 });
 // =====================================================
 // COMPREHENSIVE DATA ACCESS HELPER
@@ -555,6 +555,7 @@ function initWebSocket() {
     ws.onclose = () => setTimeout(initWebSocket, 5000);
 }
 
+/*
 async function fetchRigsOnce() {
     const res = await fetch(`${API}/rigs`);
     if (!res.ok) return;
@@ -562,6 +563,7 @@ async function fetchRigsOnce() {
     lastUpdateTs = Date.now() / 1000;
     render();
 }
+*/
 
 // =====================================================
 // FORMATTING UTILITIES
@@ -621,62 +623,46 @@ function fmtUptime(sec) {
 // =====================================================
 // Simple Column Hiding System
 // =====================================================
-function loadColumnState() {
-    const saved = localStorage.getItem('hiddenColumns');
-    if (saved) {
-        try {
-            const state = JSON.parse(saved);
-            // Clear current set and add saved columns
-            hiddenColumns.clear();
-            state.forEach(col => {
-                // Only add valid column indices (1-15 for data columns)
-                if (col >= 1 && col <= 15) {
-                    hiddenColumns.add(col);
-                }
+
+function setupHeaderClickHandlers() {
+    const headerGrid = document.querySelector('.rig-header-grid');
+    if (!headerGrid) return;
+    
+    // 1. Make "Name" header clickable to reset hidden columns
+    const nameHeader = headerGrid.children[0];
+    if (nameHeader) {
+        // Find the text part of the Name header (not the reset button)
+        const nameText = nameHeader.textContent.replace('⟳', '').trim();
+        nameHeader.innerHTML = `
+            <span class="reset-btn" id="btn-reset" title="Hard reset rigs">⟳</span>
+            <span class="name-header-text">${nameText}</span>
+        `;
+        
+        const nameTextSpan = nameHeader.querySelector('.name-header-text');
+        if (nameTextSpan) {
+            nameTextSpan.style.cursor = 'pointer';
+            nameTextSpan.title = 'Click to show all hidden columns';
+            nameTextSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                resetAllHiddenColumns();
             });
-            console.log('Loaded hidden columns:', Array.from(hiddenColumns));
-        } catch(e) {
-            console.error('Failed to load column state:', e);
-            // Clear invalid storage
-            localStorage.removeItem('hiddenColumns');
         }
     }
-}
-
-function saveColumnState() {
-    localStorage.setItem('hiddenColumns', JSON.stringify(Array.from(hiddenColumns)));
-}
-
-function resetHiddenColumns() {
-    // Clear all hidden columns
-    hiddenColumns.clear();
     
-    // Show all columns
-    const headerGrid = document.querySelector('.rig-header-grid');
-    const rigRows = document.querySelectorAll('.rig-row .rig-main');
-    
-    if (headerGrid) {
-        // Show all header columns
-        Array.from(headerGrid.children).forEach((cell, index) => {
-            cell.classList.remove('column-hidden');
-            cell.style.opacity = '1';
-        });
-    }
-    
-    // Show all data columns
-    rigRows.forEach(row => {
-        Array.from(row.children).forEach(cell => {
-            cell.classList.remove('column-hidden');
-        });
+    // 2. Make all other metric headers clickable to hide/show
+    Array.from(headerGrid.children).forEach((cell, index) => {
+        if (index > 0 && index < headerGrid.children.length - 1) {
+            cell.style.cursor = 'pointer';
+            cell.title = 'Click to hide/show column';
+            cell.addEventListener('click', () => toggleColumnVisibility(index));
+            
+            // Visual indicator for hidden columns
+            if (hiddenColumns.has(index)) {
+                cell.classList.add('column-hidden');
+                cell.style.opacity = '0.5';
+            }
+        }
     });
-    
-    // Clear saved state
-    localStorage.removeItem('hiddenColumns');
-    
-    // Update indicator
-    updateColumnResetIndicator();
-    
-    console.log('All columns reset');
 }
 
 function resetAllHiddenColumns() {
@@ -708,6 +694,49 @@ function resetAllHiddenColumns() {
     localStorage.removeItem('hiddenColumns');
     
     console.log('All columns reset');
+}
+
+function toggleColumnVisibility(columnIndex) {
+    const headerGrid = document.querySelector('.rig-header-grid');
+    if (!headerGrid) return;
+    
+    if (hiddenColumns.has(columnIndex)) {
+        // Show the column
+        hiddenColumns.delete(columnIndex);
+        showColumn(columnIndex);
+    } else {
+        // Hide the column
+        hiddenColumns.add(columnIndex);
+        hideColumn(columnIndex);
+    }
+    
+    saveColumnState();
+}
+
+function saveColumnState() {
+    localStorage.setItem('hiddenColumns', JSON.stringify(Array.from(hiddenColumns)));
+}
+
+function loadColumnState() {
+    const saved = localStorage.getItem('hiddenColumns');
+    if (saved) {
+        try {
+            const state = JSON.parse(saved);
+            // Clear current set and add saved columns
+            hiddenColumns.clear();
+            state.forEach(col => {
+                // Only add valid column indices (1-15 for data columns)
+                if (col >= 1 && col <= 15) {
+                    hiddenColumns.add(col);
+                }
+            });
+            console.log('Loaded hidden columns:', Array.from(hiddenColumns));
+        } catch(e) {
+            console.error('Failed to load column state:', e);
+            // Clear invalid storage
+            localStorage.removeItem('hiddenColumns');
+        }
+    }
 }
 
 function applyHiddenColumnsToDOM() {
@@ -757,39 +786,6 @@ function applyHeaderVisibility() {
     });
 }
 
-function toggleColumnVisibility(columnIndex) {
-    const headerGrid = document.querySelector('.rig-header-grid');
-    if (!headerGrid) return;
-    
-    if (hiddenColumns.has(columnIndex)) {
-        // Show the column
-        hiddenColumns.delete(columnIndex);
-        showColumn(columnIndex);
-    } else {
-        // Hide the column
-        hiddenColumns.add(columnIndex);
-        hideColumn(columnIndex);
-    }
-    
-    saveColumnState();
-}
-
-function hideColumn(columnIndex) {
-    // Hide header
-    const headerGrid = document.querySelector('.rig-header-grid');
-    if (headerGrid && headerGrid.children[columnIndex]) {
-        headerGrid.children[columnIndex].classList.add('column-hidden');
-        headerGrid.children[columnIndex].style.opacity = '0.5'; // Visual feedback
-    }
-    
-    // Hide in all data rows
-    document.querySelectorAll('.rig-row .rig-main').forEach(row => {
-        if (row.children[columnIndex]) {
-            row.children[columnIndex].classList.add('column-hidden');
-        }
-    });
-}
-
 function showColumn(columnIndex) {
     // Show header
     const headerGrid = document.querySelector('.rig-header-grid');
@@ -806,73 +802,18 @@ function showColumn(columnIndex) {
     });
 }
 
-function resetAllColumns() {
-    // Show all columns
+function hideColumn(columnIndex) {
+    // Hide header
     const headerGrid = document.querySelector('.rig-header-grid');
-    if (!headerGrid) return;
-    
-    hiddenColumns.clear();
-    
-    for (let i = 1; i < headerGrid.children.length - 1; i++) {
-        showColumn(i);
+    if (headerGrid && headerGrid.children[columnIndex]) {
+        headerGrid.children[columnIndex].classList.add('column-hidden');
+        headerGrid.children[columnIndex].style.opacity = '0.5'; // Visual feedback
     }
     
-    saveColumnState();
-}
-
-function saveColumnState() {
-    localStorage.setItem('hiddenColumns', JSON.stringify(Array.from(hiddenColumns)));
-}
-
-function loadColumnState() {
-    const saved = localStorage.getItem('hiddenColumns');
-    if (saved) {
-        try {
-            const state = JSON.parse(saved);
-            state.forEach(col => hiddenColumns.add(col));
-        } catch(e) {
-            console.error('Failed to load column state:', e);
-        }
-    }
-}
-
-function setupHeaderClickHandlers() {
-    const headerGrid = document.querySelector('.rig-header-grid');
-    if (!headerGrid) return;
-    
-    // 1. Make "Name" header clickable to reset hidden columns
-    const nameHeader = headerGrid.children[0];
-    if (nameHeader) {
-        // Find the text part of the Name header (not the reset button)
-        const nameText = nameHeader.textContent.replace('⟳', '').trim();
-        nameHeader.innerHTML = `
-            <span class="reset-btn" id="btn-reset" title="Hard reset rigs">⟳</span>
-            <span class="name-header-text">${nameText}</span>
-        `;
-        
-        const nameTextSpan = nameHeader.querySelector('.name-header-text');
-        if (nameTextSpan) {
-            nameTextSpan.style.cursor = 'pointer';
-            nameTextSpan.title = 'Click to show all hidden columns';
-            nameTextSpan.addEventListener('click', (e) => {
-                e.stopPropagation();
-                resetAllHiddenColumns();
-            });
-        }
-    }
-    
-    // 2. Make all other metric headers clickable to hide/show
-    Array.from(headerGrid.children).forEach((cell, index) => {
-        if (index > 0 && index < headerGrid.children.length - 1) {
-            cell.style.cursor = 'pointer';
-            cell.title = 'Click to hide/show column';
-            cell.addEventListener('click', () => toggleColumnVisibility(index));
-            
-            // Visual indicator for hidden columns
-            if (hiddenColumns.has(index)) {
-                cell.classList.add('column-hidden');
-                cell.style.opacity = '0.5';
-            }
+    // Hide in all data rows
+    document.querySelectorAll('.rig-row .rig-main').forEach(row => {
+        if (row.children[columnIndex]) {
+            row.children[columnIndex].classList.add('column-hidden');
         }
     });
 }
@@ -1491,7 +1432,7 @@ function render() {
     // Apply hidden state to headers
     applyHeaderVisibility();
     
-    console.log('✅ Render complete');
+    console.log('✅ Render complete ' + Date.now());
 }
 
 function updateActionStats() {
@@ -1899,7 +1840,8 @@ document.addEventListener("keydown", (e) => {
 // =====================================================
 // POLLING / AUTO-REFRESH
 // =====================================================
-
-//setInterval(() => {
-//    if (Date.now() / 1000 - lastUpdateTs > 30) fetchRigsOnce();
-//}, 10000);
+/*
+setInterval(() => {
+    if (Date.now() / 1000 - lastUpdateTs > 30) fetchRigsOnce();
+}, 10000);
+*/
