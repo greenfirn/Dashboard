@@ -222,6 +222,25 @@ const DataHelper = {
         return { used_gb: "--", total_gb: "--", string: "--" };
     },
     
+    // Get GPU driver version
+    getGpuDriverVersion: (gpu) => {
+        return gpu.driver_version || "--";
+    },
+    
+    // Get NVIDIA driver version from first GPU
+    getNvidiaDriverVersion: (data) => {
+        const gpus = DataHelper.getGpus(data);
+        if (gpus.length > 0 && gpus[0].driver_version) {
+            return gpus[0].driver_version;
+        }
+        return "--";
+    },
+    
+    // Get GPU name
+    getGpuName: (gpu) => {
+        return gpu.name || "Unknown GPU";
+    },
+    
     // Get total GPU power consumption
     getTotalGpuPower: (data) => {
         const gpus = DataHelper.getGpus(data);
@@ -315,7 +334,9 @@ const DataHelper = {
                         ...algo,
                         minerKey: miner.key,
                         minerName: miner.name,
-                        minerUptime: miner.data.uptime_s
+                        minerUptime: miner.data.uptime_s,
+                        minerVersion: miner.data.miner_version,
+                        cudaDriver: miner.data.cuda_driver || miner.data.cuda_driver_version
                     });
                 });
             }
@@ -391,6 +412,44 @@ const DataHelper = {
         return algo.pool_hashrate_hs || 0;
     },
     
+    // Get CPU threads (XMRig)
+    getCpuThreads: (algo) => {
+        return algo.cpu_threads || 0;
+    },
+    
+    // Get per-thread hashrates
+    getThreadHashrates: (algo) => {
+        return algo.thread_hashrates || {};
+    },
+    
+    // ================= MINER VERSION AND DRIVER INFO =================
+    
+    // Get miner version
+    getMinerVersion: (minerData) => {
+        return minerData?.miner_version || "--";
+    },
+    
+    // Get miner version for a specific miner key
+    getMinerVersionByKey: (data, minerKey) => {
+        const miner = DataHelper.getMiner(data, minerKey);
+        return DataHelper.getMinerVersion(miner);
+    },
+    
+    // Get CUDA driver version
+    getCudaDriverVersion: (minerData) => {
+        return minerData?.cuda_driver_version || minerData?.cuda_driver || "--";
+    },
+    
+    // Get rig name (BzMiner)
+    getMinerRigName: (minerData) => {
+        return minerData?.rig_name || "--";
+    },
+    
+    // Get total devices (BzMiner)
+    getMinerTotalDevices: (minerData) => {
+        return minerData?.total_devices || 0;
+    },
+    
     // ================= STATISTICS =================
     
     // Get total hashrate for all miners
@@ -410,14 +469,16 @@ const DataHelper = {
             if (!algoMap[algoName]) {
                 algoMap[algoName] = {
                     totalHashrate: 0,
-                    miners: []
+                    miners: [],
+                    perThreadData: []
                 };
             }
             
             algoMap[algoName].totalHashrate += hashrate;
             
-            // Add miner details
+            // Add miner details with version
             const minerName = algo.minerName;
+            const minerVersion = algo.minerVersion || "--";
             
             // For SRBMiner, break down CPU/GPU
             if (algo.minerKey === "miner_srbminer") {
@@ -425,17 +486,122 @@ const DataHelper = {
                 const gpuHashrate = DataHelper.getGpuHashrateHS(algo);
                 
                 if (cpuHashrate > 0) {
-                    algoMap[algoName].miners.push(`CPU ${fmtRateHs(cpuHashrate, "")} ${minerName}`);
+                    algoMap[algoName].miners.push(`CPU ${fmtRateHs(cpuHashrate, "")} ${minerName} v${minerVersion}`);
+                    
+                    // Add per-thread data for CPU
+                    const threadHashrates = DataHelper.getThreadHashrates(algo);
+                    Object.entries(threadHashrates).forEach(([threadName, threadRate]) => {
+                        algoMap[algoName].perThreadData.push({
+                            thread: threadName,
+                            hashrate: threadRate,
+                            type: "CPU",
+                            miner: minerName
+                        });
+                    });
                 }
                 if (gpuHashrate > 0) {
-                    algoMap[algoName].miners.push(`GPU ${fmtRateHs(gpuHashrate, "")} ${minerName}`);
+                    algoMap[algoName].miners.push(`GPU ${fmtRateHs(gpuHashrate, "")} ${minerName} v${minerVersion}`);
                 }
             } else {
-                algoMap[algoName].miners.push(`${fmtRateHs(hashrate, "")} ${minerName}`);
+                const displayText = `${fmtRateHs(hashrate, "")} ${minerName} v${minerVersion}`;
+                algoMap[algoName].miners.push(displayText);
+                
+                // Add per-thread data if available
+                const threadHashrates = DataHelper.getThreadHashrates(algo);
+                Object.entries(threadHashrates).forEach(([threadName, threadRate]) => {
+                    algoMap[algoName].perThreadData.push({
+                        thread: threadName,
+                        hashrate: threadRate,
+                        type: algo.minerKey === "miner_xmrig" ? "CPU" : "GPU",
+                        miner: minerName
+                    });
+                });
             }
         });
         
         return algoMap;
+    },
+    
+    // Get miner summary with versions
+    getMinerSummary: (data) => {
+        const summary = [];
+        DataHelper.getActiveMiners(data).forEach(miner => {
+            const minerData = miner.data;
+            const algorithms = DataHelper.getMinerAlgorithms(data, miner.key);
+            
+            algorithms.forEach(algo => {
+                const totalHashrate = DataHelper.getTotalHashrateHS(algo);
+                const pool = DataHelper.getPool(algo);
+                const accepted = DataHelper.getAcceptedShares(algo) || 0;
+                const rejected = DataHelper.getRejectedShares(algo) || 0;
+                
+                summary.push({
+                    miner: miner.name,
+                    version: DataHelper.getMinerVersion(minerData),
+                    algorithm: DataHelper.getAlgorithmName(algo),
+                    hashrate: totalHashrate,
+                    pool: pool,
+                    accepted: accepted,
+                    rejected: rejected,
+                    uptime: minerData.uptime_s || 0,
+                    threadCount: DataHelper.getCpuThreads(algo) || Object.keys(DataHelper.getThreadHashrates(algo)).length,
+                    cudaDriver: DataHelper.getCudaDriverVersion(minerData)
+                });
+            });
+        });
+        return summary;
+    },
+    
+    // ================= THREAD ANALYSIS =================
+    
+    // Get CPU thread analysis (for CPU miners)
+    getCpuThreadAnalysis: (data) => {
+        const analysis = [];
+        const algorithms = DataHelper.getAllAlgorithms(data);
+        
+        algorithms.forEach(algo => {
+            const threadHashrates = DataHelper.getThreadHashrates(algo);
+            if (Object.keys(threadHashrates).length > 0) {
+                Object.entries(threadHashrates).forEach(([threadName, threadRate]) => {
+                    analysis.push({
+                        algorithm: DataHelper.getAlgorithmName(algo),
+                        miner: algo.minerName,
+                        thread: threadName,
+                        hashrate: threadRate,
+                        formatted: fmtRateHs(threadRate, "")
+                    });
+                });
+            } else if (DataHelper.getCpuThreads(algo) > 0) {
+                // For XMRig which gives thread count but not per-thread rates
+                analysis.push({
+                    algorithm: DataHelper.getAlgorithmName(algo),
+                    miner: algo.minerName,
+                    thread: `${DataHelper.getCpuThreads(algo)} threads`,
+                    hashrate: DataHelper.getTotalHashrateHS(algo),
+                    formatted: fmtRateHs(DataHelper.getTotalHashrateHS(algo), "")
+                });
+            }
+        });
+        
+        return analysis;
+    },
+    
+    // Get per-thread statistics
+    getThreadStatistics: (data) => {
+        const threadData = DataHelper.getCpuThreadAnalysis(data);
+        if (threadData.length === 0) return null;
+        
+        const rates = threadData.map(t => t.hashrate);
+        const total = rates.reduce((sum, rate) => sum + rate, 0);
+        const avg = total / rates.length;
+        
+        return {
+            totalThreads: threadData.length,
+            totalHashrate: total,
+            avgPerThread: avg,
+            minPerThread: Math.min(...rates),
+            maxPerThread: Math.max(...rates)
+        };
     },
     
     // ================= FORMATTING HELPERS =================
@@ -474,6 +640,37 @@ const DataHelper = {
             text: "CPU", // Could be "CPU" or "GPU" based on service
             class: serviceStatus.isActive ? "service-ok" : "service-bad"
         };
+    },
+    
+    // Get formatted miner version
+    getFormattedVersion: (version) => {
+        if (!version || version === "--") return "Unknown";
+        
+        // Extract version number
+        const match = version.match(/(\d+\.\d+(\.\d+)*)/);
+        if (match) {
+            return `v${match[1]}`;
+        }
+        
+        return version;
+    },
+    
+    // Get formatted driver version
+    getFormattedDriver: (driverVersion) => {
+        if (!driverVersion || driverVersion === "--") return "Unknown";
+        
+        // Convert to string if it's not already
+        const driverStr = String(driverVersion);
+        
+        // Clean up driver version
+        let clean = driverStr.replace(/\.0$/, '');
+        
+        // Check if it's a CUDA driver format
+        if (/^\d+\.\d+$/.test(clean)) {
+            return `CUDA ${clean}`;
+        }
+        
+        return clean;
     }
 };
 
@@ -1147,6 +1344,9 @@ function render() {
         
         // Process each miner
         activeMiners.forEach(miner => {
+            const minerData = miner.data;
+            const minerVersion = DataHelper.getMinerVersion(minerData);
+            const cudaDriver = DataHelper.getCudaDriverVersion(minerData);
             const algorithms = DataHelper.getMinerAlgorithms(d, miner.key);
             
             algorithms.forEach(algo => {
@@ -1159,19 +1359,44 @@ function render() {
                         DataHelper.getRejectedShares(algo)
                     );
                     
+                    // Format miner name with version
+                    const minerDisplayName = `${miner.name} ${DataHelper.getFormattedVersion(minerVersion)}`;
+                    
                     // Special handling for SRBMiner
                     if (miner.key === "miner_srbminer") {
                         const cpuHashrate = DataHelper.getCpuHashrateHS(algo);
                         const gpuHashrate = DataHelper.getGpuHashrateHS(algo);
+                        const cpuWorkers = DataHelper.getCpuWorkers(algo);
+                        const gpuWorkers = DataHelper.getGpuWorkers(algo);
                         
                         const cpuRate = cpuHashrate > 0 ? fmtRateHs(cpuHashrate, "") : null;
                         const gpuRate = gpuHashrate > 0 ? fmtRateHs(gpuHashrate, "") : null;
                         const totalRate = totalHashrate > 0 ? fmtRateHs(totalHashrate, "") : null;
                         
+                        // Get per-thread data if available
+                        const threadHashrates = DataHelper.getThreadHashrates(algo);
+                        let threadInfo = "";
+                        if (Object.keys(threadHashrates).length > 0) {
+                            const threadCount = Object.keys(threadHashrates).length;
+                            threadInfo = `<div class="miner-stat-item">
+                                <div class="stat-label">CPU THREADS</div>
+                                <div class="stat-value">${threadCount} threads</div>
+                            </div>`;
+                        } else if (cpuWorkers) {
+                            threadInfo = `<div class="miner-stat-item">
+                                <div class="stat-label">CPU THREADS</div>
+                                <div class="stat-value">${cpuWorkers} workers</div>
+                            </div>`;
+                        }
+                        
                         minerRight += `
                             <div class="miner-row-horizontal">
-                                <div class="miner-name-row">${miner.name} ${algoName}</div>
+                                <div class="miner-name-row">${minerDisplayName}</div>
                                 <div class="miner-details-compact">
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">ALGORITHM</div>
+                                        <div class="stat-value">${algoName}</div>
+                                    </div>
                                     ${cpuRate ? `
                                     <div class="miner-stat-item">
                                         <div class="stat-label">CPU HASHRATE</div>
@@ -1190,6 +1415,7 @@ function render() {
                                         <div class="stat-value">${totalRate}</div>
                                     </div>
                                     ` : ""}
+                                    ${threadInfo}
                                     <div class="miner-stat-item">
                                         <div class="stat-label">SHARES</div>
                                         <div class="stat-value">${shares}</div>
@@ -1198,9 +1424,15 @@ function render() {
                                         <div class="stat-label">UPTIME</div>
                                         <div class="stat-value">${fmtUptime(miner.data.uptime_s)}</div>
                                     </div>
+                                    ${pool ? `
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">POOL</div>
+                                        <div class="stat-value">${pool}</div>
+                                    </div>
+                                    ` : ""}
                                 </div>
                             </div>`;
-                    } 
+                    }
                     // Special handling for Rigel miner
                     else if (miner.key === "miner_rigel") {
                         const poolHashrate = DataHelper.getPoolHashrateHS(algo);
@@ -1209,7 +1441,7 @@ function render() {
                         
                         minerRight += `
                             <div class="miner-row-horizontal">
-                                <div class="miner-name-row">${miner.name}</div>
+                                <div class="miner-name-row">${minerDisplayName}</div>
                                 <div class="miner-details-compact">
                                     <div class="miner-stat-item">
                                         <div class="stat-label">ALGORITHM</div>
@@ -1242,15 +1474,31 @@ function render() {
                                 </div>
                             </div>`;
                     }
-                    else {
-                        // Standard miner display
-                        const rate = miner.key === "miner_xmrig" 
-                            ? fmtXmrig(totalHashrate)
-                            : fmtRateHs(totalHashrate, "");
+                    // Special handling for BzMiner
+                    else if (miner.key === "miner_bzminer") {
+                        const rate = fmtRateHs(totalHashrate, "");
+                        const totalDevices = DataHelper.getMinerTotalDevices(minerData);
+                        
+                        let deviceInfo = "";
+                        if (totalDevices > 0) {
+                            deviceInfo = `<div class="miner-stat-item">
+                                <div class="stat-label">DEVICES</div>
+                                <div class="stat-value">${totalDevices}</div>
+                            </div>`;
+                        }
+                        
+                        let bzCudaInfo = "";
+                        const bzCudaDriver = DataHelper.getCudaDriverVersion(minerData);
+                        if (bzCudaDriver && bzCudaDriver !== "--") {
+                            bzCudaInfo = `<div class="miner-stat-item">
+                                <div class="stat-label">CUDA</div>
+                                <div class="stat-value">${DataHelper.getFormattedDriver(bzCudaDriver)}</div>
+                            </div>`;
+                        }
                         
                         minerRight += `
                             <div class="miner-row-horizontal">
-                                <div class="miner-name-row">${miner.name}</div>
+                                <div class="miner-name-row">${minerDisplayName}</div>
                                 <div class="miner-details-compact">
                                     <div class="miner-stat-item">
                                         <div class="stat-label">ALGORITHM</div>
@@ -1260,6 +1508,56 @@ function render() {
                                         <div class="stat-label">HASHRATE</div>
                                         <div class="stat-value">${rate}</div>
                                     </div>
+                                    ${deviceInfo}
+                                    ${bzCudaInfo}
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">SHARES</div>
+                                        <div class="stat-value">${shares}</div>
+                                    </div>
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">UPTIME</div>
+                                        <div class="stat-value">${fmtUptime(miner.data.uptime_s)}</div>
+                                    </div>
+                                    ${pool ? `
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">POOL</div>
+                                        <div class="stat-value">${pool}</div>
+                                    </div>
+                                    ` : ""}
+                                </div>
+                            </div>`;
+                    }
+                    // Standard miner display
+                    else {
+                        const rate = miner.key === "miner_xmrig" 
+                            ? fmtXmrig(totalHashrate)
+                            : fmtRateHs(totalHashrate, "");
+                        
+                        // For XMRig, show thread count
+                        let xmrigThreadInfo = "";
+                        if (miner.key === "miner_xmrig") {
+                            const cpuThreads = DataHelper.getCpuThreads(algo);
+                            if (cpuThreads > 0) {
+                                xmrigThreadInfo = `<div class="miner-stat-item">
+                                    <div class="stat-label">CPU THREADS</div>
+                                    <div class="stat-value">${cpuThreads}</div>
+                                </div>`;
+                            }
+                        }
+                        
+                        minerRight += `
+                            <div class="miner-row-horizontal">
+                                <div class="miner-name-row">${minerDisplayName}</div>
+                                <div class="miner-details-compact">
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">ALGORITHM</div>
+                                        <div class="stat-value">${algoName}</div>
+                                    </div>
+                                    <div class="miner-stat-item">
+                                        <div class="stat-label">HASHRATE</div>
+                                        <div class="stat-value">${rate}</div>
+                                    </div>
+                                    ${xmrigThreadInfo}
                                     <div class="miner-stat-item">
                                         <div class="stat-label">SHARES</div>
                                         <div class="stat-value">${shares}</div>
@@ -1281,12 +1579,25 @@ function render() {
             });
         });
 		
-        /* ----- Header only if something rendered ----- */
-        if (minerRight !== "") {
+		// Display NVIDIA driver version if available
+        const nvidiaDriver = DataHelper.getNvidiaDriverVersion(d);
+        if (nvidiaDriver && nvidiaDriver !== "--") {
+            /* ----- Header only if something rendered ----- */
+            if (minerRight !== "") {
+            minerRight =
+                `<div class="docker-header">Miners - NVIDIA DRIVER ${DataHelper.getFormattedDriver(nvidiaDriver)}</div>` +
+                minerRight;
+            }
+        }
+		else{
+            /* ----- Header only if something rendered ----- */
+            if (minerRight !== "") {
             minerRight =
                 `<div class="docker-header">Miners</div>` +
                 minerRight;
-        }
+            }
+		}		
+
 
         /* ---------------- Row Summary ---------------- */
         const minerSummary = [];

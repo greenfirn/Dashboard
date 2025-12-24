@@ -64,25 +64,14 @@ def service_status(service):
     rc, out, _ = run(f"systemctl is-active {service}")
     return out.strip() if rc == 0 else "unknown"
 
-def has_nvidia_gpu():
-    try:
-        rc = subprocess.run(
-            ["nvidia-smi", "-L"],
-            capture_output=True,
-            text=True,
-            timeout=1.0
-        )
-        return rc.returncode == 0 and rc.stdout.strip() != ""
-    except Exception:
-        return False
-
 def collect_gpu_stats():
+    """Collect detailed GPU statistics including driver info"""
     cmd = (
         "nvidia-smi --query-gpu=index,uuid,temperature.gpu,"
         "utilization.gpu,utilization.memory,power.draw,"
         "clocks.sm,clocks.mem,fan.speed,"
-        "memory.total,memory.used "
-        "--format=csv,noheader,nounits"
+        "memory.total,memory.used,driver_version,"
+        "name,pci.bus_id --format=csv,noheader,nounits"
     )
 
     rc = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -96,18 +85,23 @@ def collect_gpu_stats():
     gpus = []
     for line in lines:
         fields = [x.strip() for x in line.split(",")]
-        if len(fields) != 11:
+        if len(fields) < 13:  # Adjust for driver_version and name fields
             continue
 
-        (
-            idx, uuid, temp, util, memutil, watts,
-            smclk, memclk, fan, memtotal, memused
-        ) = fields
-
         try:
+            (
+                idx, uuid, temp, util, memutil, watts,
+                smclk, memclk, fan, memtotal, memused,
+                driver_version, name
+            ) = fields[:13]
+            
+            # Get PCI bus ID if available
+            pci_bus = fields[13] if len(fields) > 13 else ""
+            
             gpus.append({
                 "index": int(idx),
                 "uuid": uuid,
+                "name": name,
                 "temp": int(temp),
                 "util": int(util),
                 "mem_util": int(memutil),
@@ -117,11 +111,43 @@ def collect_gpu_stats():
                 "mem_clock": int(memclk),
                 "vram_used": int(memused),
                 "vram_total": int(memtotal),
+                "driver_version": driver_version,
+                "pci_bus_id": pci_bus
             })
-        except ValueError:
+        except ValueError as e:
             continue
 
     return gpus
+
+def has_nvidia_gpu():
+    """Check if NVIDIA GPU is present and driver is loaded"""
+    try:
+        rc = subprocess.run(
+            ["nvidia-smi", "-L"],
+            capture_output=True,
+            text=True,
+            timeout=2.0
+        )
+        if rc.returncode == 0 and "GPU" in rc.stdout:
+            return True
+    except Exception:
+        pass
+    
+    # Alternative check via lspci
+    try:
+        rc = subprocess.run(
+            ["lspci", "|", "grep", "-i", "nvidia"],
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=1.0
+        )
+        if rc.returncode == 0 and "NVIDIA" in rc.stdout.upper():
+            return True
+    except Exception:
+        pass
+    
+    return False
 
 def collect_cpu_temp():
     # 1) Try Intel-style hwmon sensors ("coretemp")
@@ -332,35 +358,7 @@ def collect_bzminer_stats():
         pool_id = pool.get("id", -1)
         
         # Find algorithm name for this pool
-        pool_algo = None
-        # Check device hash rates to determine which algorithm is active
-        for device in devices:
-            device_pools = device.get("pool", [])
-            if isinstance(device_pools, list) and pool_id in device_pools:
-                # Look for non-zero hashrate to determine active algorithm
-                device_hr = device.get("hashrate", [])
-                if isinstance(device_hr, list) and len(device_hr) > 0:
-                    # Check if this device has non-zero hashrate for this pool
-                    pool_index = device_pools.index(pool_id) if pool_id in device_pools else -1
-                    if pool_index >= 0 and pool_index < len(device_hr) and device_hr[pool_index] > 0:
-                        # Try to get algorithm from pool data or guess from context
-                        pool_algo = pool.get("algorithm")
-                        break
-        
-        if not pool_algo:
-            pool_algo = pool.get("algorithm", "unknown")
-        
-        # Calculate total hashrate for this pool from all devices
-        total_hashrate = 0
-        for device in devices:
-            device_pools = device.get("pool", [])
-            device_hr = device.get("hashrate", [])
-            
-            if isinstance(device_pools, list) and isinstance(device_hr, list):
-                # Find if this device mines on this pool
-                for i, p_id in enumerate(device_pools):
-                    if p_id == pool_id and i < len(device_hr):
-                        total_hashrate += device_hr[i]
+        pool_algo = pool.get("algorithm", "unknown")
         
         # Get pool URL
         pool_url = ""
@@ -372,6 +370,19 @@ def collect_bzminer_stats():
                 host_part = url_parts[1].split(":")[0]
                 pool_url = host_part.split(".")[-2] if "." in host_part else host_part
         
+        # Calculate total hashrate for this pool from all devices
+        total_hashrate = 0
+        
+        for device in devices:
+            device_pools = device.get("pool", [])
+            device_hr = device.get("hashrate", [])
+            
+            if isinstance(device_pools, list) and isinstance(device_hr, list):
+                # Find if this device mines on this pool
+                for i, p_id in enumerate(device_pools):
+                    if p_id == pool_id and i < len(device_hr):
+                        total_hashrate += device_hr[i]
+        
         # Only include active pools (with hashrate > 0)
         if total_hashrate > 0 or pool.get("status", 0) > 0:
             algo_data = {
@@ -381,17 +392,18 @@ def collect_bzminer_stats():
                 "accepted_shares": pool.get("valid_solutions"),
                 "rejected_shares": pool.get("rejected_solutions"),
                 "stale_shares": pool.get("stale_solutions"),
-                "workers": None  # BzMiner doesn't provide workers count in this format
+                "workers": None
             }
             algorithms.append(algo_data)
     
     return {
         "status": "ok",
         "miner": "bzminer",
-        "bzminer_version": data.get("bzminer_version"),
+        "miner_version": data.get("bzminer_version"),
         "rig_name": data.get("rig_name"),
         "uptime_s": data.get("uptime_s"),
         "total_devices": len(devices),
+        "cuda_driver_version": data.get("cuda_driver_version"),
         "algorithms": algorithms
     }
 
@@ -442,59 +454,169 @@ def collect_rigel_stats():
 
     return {
         "status": "ok",
+        "miner": "rigel",
+        "miner_version": data.get("version"),
+        "cuda_driver": data.get("cuda_driver"),
         "uptime_s": data.get("uptime"),
         "algorithms": algorithms
     }
 
 def collect_srbminer_stats():
     host = os.environ.get("SRB_API_HOST", "127.0.0.1")
-    port = int(os.environ.get("SRB_API_PORT", "21550"))
-    url = f"http://{host}:{port}"
-
+    main_port = int(os.environ.get("SRB_API_PORT", "21550"))
+    cpu_port = 21551
+    
+    # Check main port (21550)
+    main_data = {}
+    main_status = "offline"
     try:
-        with urllib.request.urlopen(url, timeout=1.0) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+        main_url = f"http://{host}:{main_port}"
+        with urllib.request.urlopen(main_url, timeout=1.0) as resp:
+            main_data = json.loads(resp.read().decode("utf-8"))
+        main_status = "ok"
     except Exception as e:
+        main_data = {}
+        main_status = "offline"
+    
+    # Check CPU port (21551) for separate instance
+    cpu_data = {}
+    cpu_status = "offline"
+    try:
+        cpu_url = f"http://{host}:{cpu_port}"
+        with urllib.request.urlopen(cpu_url, timeout=1.0) as resp:
+            cpu_data = json.loads(resp.read().decode("utf-8"))
+        cpu_status = "ok"
+    except Exception:
+        # CPU port not active, that's okay
+        pass
+    
+    # If both are offline, return error
+    if main_status == "offline" and cpu_status == "offline":
         return {
             "status": "offline",
-            "error": str(e)
+            "error": "Both main and CPU ports unavailable"
         }
-
-    algos = data.get("algorithms", [])
+    
     algorithms = []
     
-    for algo_data in algos:
-        name = algo_data.get("name")
-        if not name:
-            continue
+    # Process GPU mining from main port
+    if main_status == "ok":
+        main_algos = main_data.get("algorithms", [])
+        for algo_data in main_algos:
+            name = algo_data.get("name")
+            if not name:
+                continue
+                
+            hr = algo_data.get("hashrate", {})
+            gpu_block = hr.get("gpu", {}) if isinstance(hr, dict) else {}
+            gpu_hs = gpu_block.get("total")
             
-        hr = algo_data.get("hashrate", {})
-        cpu_block = hr.get("cpu", {}) if isinstance(hr, dict) else {}
-        gpu_block = hr.get("gpu", {}) if isinstance(hr, dict) else {}
-        
-        # SRBMiner reports in H/s
-        cpu_hs = cpu_block.get("total")
-        gpu_hs = gpu_block.get("total")
-        hashrate_hs = (cpu_hs or 0) + (gpu_hs or 0)
-        
-        shares = algo_data.get("shares", {})
-        
-        algo_info = {
-            "algorithm": name,
-            "cpu_hashrate_hs": cpu_hs,
-            "gpu_hashrate_hs": gpu_hs,
-            "hashrate_hs": hashrate_hs if hashrate_hs > 0 else None,
-            "accepted_shares": shares.get("accepted"),
-            "rejected_shares": shares.get("rejected"),
-            "cpu_workers": data.get("total_cpu_workers"),
-            "gpu_workers": data.get("total_gpu_workers")
-        }
-        algorithms.append(algo_info)
-
+            # If there's GPU hashrate, add as GPU entry
+            if gpu_hs and gpu_hs > 0:
+                shares = algo_data.get("shares", {})
+                
+                algo_info = {
+                    "algorithm": name,
+                    "cpu_hashrate_hs": 0,
+                    "gpu_hashrate_hs": gpu_hs,
+                    "hashrate_hs": gpu_hs,
+                    "accepted_shares": shares.get("accepted"),
+                    "rejected_shares": shares.get("rejected"),
+                    "cpu_workers": 0,
+                    "gpu_workers": main_data.get("total_gpu_workers"),
+                    "thread_hashrates": None,  # No thread data for GPU
+                    "mining_type": "GPU"
+                }
+                algorithms.append(algo_info)
+    
+    # Process CPU mining from main port
+    if main_status == "ok":
+        main_algos = main_data.get("algorithms", [])
+        for algo_data in main_algos:
+            name = algo_data.get("name")
+            if not name:
+                continue
+                
+            hr = algo_data.get("hashrate", {})
+            cpu_block = hr.get("cpu", {}) if isinstance(hr, dict) else {}
+            cpu_hs = cpu_block.get("total")
+            
+            # If there's CPU hashrate, add as CPU entry
+            if cpu_hs and cpu_hs > 0:
+                # Collect per-thread hashrates
+                thread_hashrates = {}
+                if isinstance(cpu_block, dict):
+                    for key, value in cpu_block.items():
+                        if key.startswith("thread") and isinstance(value, (int, float)):
+                            thread_hashrates[key] = value
+                
+                shares = algo_data.get("shares", {})
+                
+                algo_info = {
+                    "algorithm": name,
+                    "cpu_hashrate_hs": cpu_hs,
+                    "gpu_hashrate_hs": 0,
+                    "hashrate_hs": cpu_hs,
+                    "accepted_shares": shares.get("accepted"),
+                    "rejected_shares": shares.get("rejected"),
+                    "cpu_workers": main_data.get("total_cpu_workers"),
+                    "gpu_workers": 0,
+                    "thread_hashrates": thread_hashrates if thread_hashrates else None,
+                    "mining_type": "CPU"
+                }
+                algorithms.append(algo_info)
+    
+    # Process separate CPU port data
+    if cpu_status == "ok":
+        cpu_algos = cpu_data.get("algorithms", [])
+        for algo_data in cpu_algos:
+            name = algo_data.get("name")
+            if not name:
+                continue
+                
+            hr = algo_data.get("hashrate", {})
+            cpu_block = hr.get("cpu", {}) if isinstance(hr, dict) else {}
+            cpu_hs = cpu_block.get("total")
+            
+            # If there's CPU hashrate, add as CPU entry
+            if cpu_hs and cpu_hs > 0:
+                # Collect per-thread hashrates
+                thread_hashrates = {}
+                if isinstance(cpu_block, dict):
+                    for key, value in cpu_block.items():
+                        if key.startswith("thread") and isinstance(value, (int, float)):
+                            thread_hashrates[key] = value
+                
+                shares = algo_data.get("shares", {})
+                
+                algo_info = {
+                    "algorithm": name,
+                    "cpu_hashrate_hs": cpu_hs,
+                    "gpu_hashrate_hs": 0,
+                    "hashrate_hs": cpu_hs,
+                    "accepted_shares": shares.get("accepted"),
+                    "rejected_shares": shares.get("rejected"),
+                    "cpu_workers": cpu_data.get("total_cpu_workers"),
+                    "gpu_workers": 0,
+                    "thread_hashrates": thread_hashrates if thread_hashrates else None,
+                    "mining_type": "CPU",
+                    "source_port": "21551"  # Mark as from separate CPU port
+                }
+                algorithms.append(algo_info)
+    
+    # Determine overall status
+    overall_status = "ok" if algorithms else "offline"
+    
+    # Use main data for version/uptime, fallback to CPU data
+    source_data = main_data if main_status == "ok" else cpu_data
+    
     return {
-        "status": "ok",
+        "status": overall_status,
         "miner": "srbminer",
-        "uptime_s": data.get("mining_time") or data.get("uptime") or data.get("uptime_s"),
+        "miner_version": source_data.get("miner_version"),
+        "cpu_port_active": cpu_status == "ok",
+        "gpu_port_active": main_status == "ok",
+        "uptime_s": source_data.get("mining_time") or source_data.get("uptime") or source_data.get("uptime_s"),
         "algorithms": algorithms
     }
 
@@ -513,9 +635,19 @@ def collect_wildrig_stats():
     algorithms = []
     
     if algo:
-        hr = data.get("hashrate", {}).get("total")
+        hr = data.get("hashrate", {})
+        total_hr = hr.get("total")
+        threads_hr = hr.get("threads")
+        
         # WildRig reports in H/s
-        hashrate_hs = hr[0] if isinstance(hr, list) and len(hr) > 0 else None
+        hashrate_hs = total_hr[0] if isinstance(total_hr, list) and len(total_hr) > 0 else None
+        
+        # Collect per-thread hashrates
+        thread_hashrates = {}
+        if isinstance(threads_hr, list):
+            for i, thread_hr in enumerate(threads_hr):
+                if isinstance(thread_hr, list) and len(thread_hr) > 0:
+                    thread_hashrates[f"thread_{i}"] = thread_hr[0]
         
         results = data.get("results", {})
         acc = results.get("shares_accepted")
@@ -528,12 +660,15 @@ def collect_wildrig_stats():
             "algorithm": algo,
             "hashrate_hs": hashrate_hs,
             "accepted_shares": accepted,
-            "rejected_shares": rejected
+            "rejected_shares": rejected,
+            "thread_hashrates": thread_hashrates if thread_hashrates else None
         }
         algorithms.append(algo_data)
 
     return {
         "status": "ok",
+        "miner": "wildrig",
+        "miner_version": data.get("version"),
         "uptime_s": data.get("uptime"),
         "algorithms": algorithms
     }
@@ -563,17 +698,28 @@ def collect_lolminer_stats():
         # lolMiner: Total_Performance is in H/s, multiply by factor
         hashrate_hs = total_perf * factor if isinstance(total_perf, (int, float)) else None
         
+        # Get per-worker performance for thread breakdown
+        worker_perf = algo_data.get("Worker_Performance", [])
+        thread_hashrates = {}
+        if isinstance(worker_perf, list):
+            for i, perf in enumerate(worker_perf):
+                if isinstance(perf, (int, float)):
+                    thread_hashrates[f"worker_{i}"] = perf * factor
+        
         algo_info = {
             "algorithm": algo_name,
             "hashrate_hs": hashrate_hs,
             "accepted_shares": algo_data.get("Total_Accepted"),
             "rejected_shares": algo_data.get("Total_Rejected"),
-            "pool": algo_data.get("Pool")
+            "pool": algo_data.get("Pool"),
+            "thread_hashrates": thread_hashrates if thread_hashrates else None
         }
         algorithms.append(algo_info)
 
     return {
         "status": "ok",
+        "miner": "lolminer",
+        "miner_version": data.get("Software"),
         "uptime_s": data.get("Session", {}).get("Uptime"),
         "algorithms": algorithms
     }
@@ -600,17 +746,28 @@ def collect_onezerominer_stats():
         # OneZeroMiner reports in H/s
         hashrate_hs = algo_data.get("total_hashrate")
         
+        # Get per-device hashrates
+        device_hr = algo_data.get("hashrates", [])
+        thread_hashrates = {}
+        if isinstance(device_hr, list):
+            for i, hr_value in enumerate(device_hr):
+                if isinstance(hr_value, (int, float)):
+                    thread_hashrates[f"device_{i}"] = hr_value
+        
         algo_info = {
             "algorithm": name,
             "hashrate_hs": hashrate_hs,
             "accepted_shares": algo_data.get("total_accepted_shares"),
             "rejected_shares": algo_data.get("total_rejected_shares"),
-            "pool": algo_data.get("pool")
+            "pool": algo_data.get("pool"),
+            "thread_hashrates": thread_hashrates if thread_hashrates else None
         }
         algorithms.append(algo_info)
 
     return {
         "status": "ok",
+        "miner": "onezerominer",
+        "miner_version": data.get("version"),
         "uptime_s": data.get("uptime_seconds"),
         "algorithms": algorithms
     }
@@ -632,12 +789,16 @@ def collect_gminer_stats():
     if algo:
         total_hs = 0
         devices = data.get("devices", [])
-
+        
+        # Collect per-device hashrates
+        thread_hashrates = {}
+        
         if isinstance(devices, list):
-            for d in devices:
+            for i, d in enumerate(devices):
                 speed = d.get("speed")
                 if isinstance(speed, (int, float)):
                     total_hs += speed
+                    thread_hashrates[f"gpu_{i}"] = speed
         
         # GMiner reports in H/s
         hashrate_hs = total_hs if total_hs > 0 else None
@@ -647,12 +808,15 @@ def collect_gminer_stats():
             "hashrate_hs": hashrate_hs,
             "accepted_shares": data.get("total_accepted_shares"),
             "rejected_shares": data.get("total_rejected_shares"),
-            "pool": data.get("pool")
+            "pool": data.get("pool"),
+            "thread_hashrates": thread_hashrates if thread_hashrates else None
         }
         algorithms.append(algo_data)
 
     return {
         "status": "ok",
+        "miner": "gminer",
+        "miner_version": data.get("miner"),
         "uptime_s": data.get("uptime"),
         "algorithms": algorithms
     }
@@ -688,24 +852,33 @@ def collect_xmrig_stats():
         connection = data.get("connection", {})
         pool_url = connection.get("url", "").split("://")[-1].split(":")[0] if connection else None
 
+        # XMRig doesn't provide per-thread hashrate in the API
+        # but we can include CPU info
+        cpu_info = data.get("cpu", {})
+        threads = cpu_info.get("threads", 0)
+        
         algo_data = {
             "algorithm": algo,
             "hashrate_hs": hashrate_hs,
             "accepted_shares": shares_good,
             "rejected_shares": rejected_shares,
-            "pool": pool_url
+            "pool": pool_url,
+            "cpu_threads": threads
         }
         algorithms.append(algo_data)
 
     return {
         "status": "ok",
+        "miner": "xmrig",
+        "miner_version": data.get("version"),
         "uptime_s": data.get("uptime"),
         "algorithms": algorithms
     }
 
 def collect_full_stats():
     gpu_present = has_nvidia_gpu()
-    return {
+
+    stats = {
         "rig": RIG_NAME,
         "timestamp": int(time.time()),
         "cpu_temp": collect_cpu_temp(),
@@ -714,6 +887,10 @@ def collect_full_stats():
         "memory": collect_memory(),
         "gpu_present": gpu_present,
         "gpus": collect_gpu_stats() if gpu_present else [],
+    }
+    
+    # Add miner stats
+    stats.update({
         "miner_rigel": collect_rigel_stats(),
         "miner_bzminer": collect_bzminer_stats(),
         "miner_lolminer": collect_lolminer_stats(),
@@ -725,8 +902,9 @@ def collect_full_stats():
         "docker": collect_docker_containers(),
         "cpu_service": collect_service_uptime("docker_events_cpu.service"),
         "gpu_service": collect_service_uptime("docker_events_gpu.service"),
-    }
-
+    })
+    
+    return stats
 EOF
 sudo systemctl restart rigcloud-agent
 sudo systemctl is-active rigcloud-agent

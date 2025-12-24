@@ -491,11 +491,11 @@ h1 {
     color: var(--text-accent);
 }
 
-/* Flightsheets textarea */
+/* Flightsheets textarea - FIXED */
 #fs-modal #fs-raw {
-    height: 300px;
-    min-height: 300px;
-    max-height: 300px;
+    height: 240px;
+    min-height: 240px;
+    max-height: 240px;
     overflow-y: auto;
     overflow-x: auto;
     border: 1px solid #333;
@@ -504,11 +504,25 @@ h1 {
     font-family: Consolas, monospace;
     font-size: 13px;
     padding: 10px;
-    resize: vertical;
+    resize: vertical;  /* Allow vertical resize */
     box-sizing: border-box;
     flex: none;
     display: block;
-    white-space: pre;
+    white-space: pre-wrap;  /* Changed from 'pre' to 'pre-wrap' */
+    word-break: break-all;  /* Break long lines */
+    line-height: 1.4;
+}
+
+/* Ensure the body has proper overflow control */
+#fs-modal .cmd-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;  /* Important for flex children */
+    padding: 16px;
+    gap: 12px;
+    background: #000;
+    overflow: hidden;  /* Prevent body from scrolling */
 }
 
 /* FIXED: Flightsheets footer with input above buttons */
