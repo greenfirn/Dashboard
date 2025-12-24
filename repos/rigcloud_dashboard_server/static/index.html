@@ -36,9 +36,9 @@
 
         <!-- ACTION BUTTONS -->
         <div class="action-buttons">
-            <button class="action-btn" id="btn-action-start">▶</button>
-            <button class="action-btn" id="btn-action-stop">■</button>
-            <button class="action-btn" id="btn-action-restart">↻</button>
+            <button class="action-btn" id="btn-action-start" title="Start ALL/CPU/GPU">▶</button>
+            <button class="action-btn" id="btn-action-stop" title="Stop ALL/CPU/GPU">■</button>
+            <button class="action-btn" id="btn-action-restart" title="Restart ALL/CPU/GPU">↻</button>
         </div>
 
         <!-- STATUS OUTPUT -->
@@ -92,45 +92,44 @@ nvidia-smi
             </div>
         </div>
     </div>
-
-<div class="cmd-modal hidden" id="fs-modal">
-    <div class="cmd-dialog">
-        <div class="cmd-header">
-            <span>Flightsheets</span>
-        </div>
-
-        <div class="cmd-body">
-            <!-- Flightsheets list (TOP) -->
-            <div id="fs-list" class="fs-list">
-                <!-- populated by JS -->
+    <div class="cmd-modal hidden" id="fs-modal">
+        <div class="cmd-dialog">
+            <div class="cmd-header">
+                <span>Flightsheets</span>
             </div>
 
-            <!-- Raw editor (MIDDLE) -->
-            <textarea
-                id="fs-raw"
-                spellcheck="false"
-                placeholder="# Flightsheet raw content"
-            ></textarea>
-        </div>
+            <div class="cmd-body">
+                <!-- Flightsheets list (TOP) -->
+                <div id="fs-list" class="fs-list">
+                    <!-- populated by JS -->
+                </div>
 
-        <!-- FOOTER: name + buttons -->
-        <div class="cmd-footer">
-            <input
-                type="text"
-                id="fs-name"
-                placeholder="Flightsheet name"
-                autocomplete="off"
-            />
-            <div class="cmd-btn-row">
-                <button class="cmd-btn" id="btn-save-fs">Save</button>
-                <button class="cmd-btn ok" id="btn-apply-fs">Apply</button>
-                <button class="cmd-btn" id="btn-delete-fs">Delete</button>
-				<button class="cmd-btn" id="btn-clear-fs">Clear</button>
-				<button class="cmd-btn cancel" id="btn-close-fs">Close</button>
+                <!-- Raw editor (MIDDLE) -->
+                <textarea
+                    id="fs-raw"
+                    spellcheck="false"
+                    placeholder="# Flightsheet raw content"
+                ></textarea>
+            </div>
+
+            <!-- FOOTER: name + buttons -->
+            <div class="cmd-footer">
+                <input
+                    type="text"
+                    id="fs-name"
+                    placeholder="Flightsheet name"
+                    autocomplete="off"
+                />
+                <div class="cmd-btn-row">
+                    <button class="cmd-btn" id="btn-save-fs">Save</button>
+                    <button class="cmd-btn ok" id="btn-apply-fs">Apply</button>
+                    <button class="cmd-btn" id="btn-delete-fs">Delete</button>
+                    <button class="cmd-btn" id="btn-clear-fs">Clear</button>
+                    <button class="cmd-btn cancel" id="btn-close-fs">Close</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
     <!-- ================= RIG HEADER ================= -->
     <div class="rig-header">
