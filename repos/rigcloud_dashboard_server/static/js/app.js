@@ -80,6 +80,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
 		document.getElementById("fs-name").value = '';
     });
+
+	document.getElementById("btn-new-fs")?.addEventListener("click", newFlightsheet);
 	document.getElementById("btn-save-fs")?.addEventListener("click", saveFlightsheetFromDialog);
     document.getElementById("btn-apply-fs")?.addEventListener("click", applyFlightsheet);
     document.getElementById("btn-delete-fs")?.addEventListener("click", deleteFlightsheet);
@@ -674,17 +676,6 @@ const DataHelper = {
     }
 };
 
-   
-    // ... KEEP ALL YOUR EXISTING CODE AS IS, but DON'T include:
-    // - getCpuShares
-    // - getGpuShares  
-    // - getCpuColumnContent
-    // - getGpuColumnContent
-    // - getSharesClass
-    // - getFormattedShares
-    // ... until AFTER the object is defined
-
-
 // =====================================================
 // ADD CIRCULAR DEPENDENCY METHODS AFTER OBJECT IS DEFINED
 // =====================================================
@@ -771,7 +762,7 @@ DataHelper.getCpuColumnContent = (data) => {
         };
     }
     // Fallback to service status
-    const cpuService = DataHelper.getServiceStatus(data, "cpu_service_name");
+    const cpuService = DataHelper.getServiceStatus(data, "cpu_service");
     const formattedService = DataHelper.getFormattedService(cpuService, "cpu");
     return {
         html: `<span class="${formattedService.class}">CPU</span>`,
@@ -789,7 +780,7 @@ DataHelper.getGpuColumnContent = (data) => {
         };
     }
     // Fallback to service status
-    const gpuService = DataHelper.getServiceStatus(data, "gpu_service_name");
+    const gpuService = DataHelper.getServiceStatus(data, "gpu_service");
     const formattedService = DataHelper.getFormattedService(gpuService, "gpu");
     return {
         html: `<span class="${formattedService.class}">GPU</span>`,
@@ -821,17 +812,6 @@ DataHelper.getAllAlgorithms = (data) => {
     });
     return algorithms;
 };
-
-// =====================================================
-// Debug code
-// =====================================================
-
-console.log("DataHelper defined. Checking methods...");
-console.log("getCpuColumnContent exists?", typeof DataHelper.getCpuColumnContent);
-console.log("getGpuColumnContent exists?", typeof DataHelper.getGpuColumnContent);
-console.log("getCpuShares exists?", typeof DataHelper.getCpuShares);
-console.log("getGpuShares exists?", typeof DataHelper.getGpuShares);
-console.log("getAllAlgorithms exists?", typeof DataHelper.getAllAlgorithms);
 
 // =====================================================
 // NETWORK COMMUNICATION (HTTP/WebSocket)
@@ -1319,6 +1299,69 @@ async function saveFlightsheetFromDialog() {
     } catch (err) {
         alert(`Error saving flightsheet: ${err.message}`);
     }
+}
+
+function newFlightsheet() {
+    const raw = document.getElementById("fs-raw").value.trim();
+
+    if (raw) {
+        alert("Flightsheet is not empty");
+        return;
+    }
+
+    let finalText = "";
+
+    function buildBlock(mode) {
+        const firstLine =
+            mode === "cpu"
+                ? "tee /home/user/rig-cpu.conf > /dev/null <<'EOF'"
+                : "tee /home/user/rig-gpu.conf > /dev/null <<'EOF'";
+
+        const cmdLine =
+            mode === "cpu"
+                ? "sudo systemctl restart docker_events_cpu"
+                : "sudo systemctl restart docker_events_gpu";
+
+        const configLines = [
+            'TARGET_IMAGE 0 "ubuntu:24.04"',
+            'TARGET_NAME 0 ""',
+            'RESET_OC 0 "false"',
+            `SCREEN_NAME 0 "${mode}"`,
+            'CUSTOM_MINER 0 ""',
+            'MINER 0 ""',
+            'ALGO 0 ""',
+            'POOL 0 ""',
+            'WALLET 0 ""',
+            'PASS 0 "x"',
+            'ARGS 0 ""'
+        ];
+
+        return [
+            firstLine,
+            ...configLines,
+            "EOF",
+            cmdLine
+        ].join("\n");
+    }
+
+    switch (currentActionMode) {
+        case "all":
+            finalText += buildBlock("cpu");
+            finalText += "\n\n";
+            finalText += buildBlock("gpu");
+            break;
+
+        case "cpu":
+            finalText = buildBlock("cpu");
+            break;
+
+        case "gpu":
+        default:
+            finalText = buildBlock("gpu");
+            break;
+    }
+
+    document.getElementById("fs-raw").value = finalText;
 }
 
 function applyFlightsheet() {

@@ -11,7 +11,7 @@
     --text-accent: #4fc3f7;
     --text-accent-soft: #8FB5C9;
 
-    --text-ok: #8bc34a;
+    --text-ok: #90ee90; /* #90ee90 #8bc34a */
     --text-warn: #ffcc00;
     --text-error: #ff5252;
     --text-info: #81d4fa;
@@ -37,12 +37,6 @@ h1 {
     font-size: 18px;
 }
 
-/* Add to your CSS file */
-.shares-perfect { color: #00ff00; }      /* 0% rejected - bright green */
-.shares-good { color: #90ee90; }         /* < 1% rejected - light green */
-.shares-warning { color: #ffa500; }      /* < 3% rejected - orange */
-.shares-bad { color: #ff0000; }          /* >= 3% rejected - red */
-.status-unknown { color: #888888; }      /* unknown/no shares - gray */
 /* ==================================================
    Action Bar
 ================================================== */
@@ -619,6 +613,11 @@ h1 {
     border-color: #c82333;
 }
 
+#fs-modal #btn-new-fs {
+    border-color: #555;
+    opacity: 0.85;
+}
+
 #fs-modal #btn-clear-fs {
     border-color: #555;
     opacity: 0.85;
@@ -879,13 +878,18 @@ h1 {
 
 .service-ok {
     color: var(--text-ok);
-    font-weight: bold;
 }
 
 .service-bad {
     color: var(--text-dim);
-    font-weight: bold;
 }
+
+/* Shares colors */
+.shares-perfect { color: #00ff00; }
+.shares-good { color: #90ee90; }
+.shares-warning { color: #ffa500; }
+.shares-bad { color: #ff0000; }
+.status-unknown { color: #888888; }
 
 /* ==================================================
    Hover Effects
