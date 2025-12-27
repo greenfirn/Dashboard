@@ -1,0 +1,65 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+homeassistant:
+  external_url: "https://**********.duckdns.org"
+  internal_url: "http://10.10.0.10:8123"
+
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 172.18.0.0/16
+    - 127.0.0.1
+
+alexa:
+    smart_home:
+        filter:
+            exclude_entities:
+            - binary_sensor.updater
+            exclude_domains:
+            - switch
+            - light
+            - plug
+
+config_editor:
+
+# Twilio API configuration
+twilio:
+  account_sid: !secret twilio_account_sid
+  auth_token: !secret twilio_auth_token
+
+notify:
+  # Gmail email notifications
+  - platform: smtp
+    name: gmail_notify
+    server: smtp.gmail.com
+    port: 587
+    timeout: 15
+    encryption: starttls
+    username: !secret gmail_username
+    password: !secret gmail_password
+    sender: !secret gmail_username
+    recipient:
+      - !secret gmail_username
+
+  # PRIMARY Twilio SMS notifications (to you)
+  - platform: twilio_sms
+    name: twilio_sms
+    account_sid: !secret twilio_account_sid
+    auth_token: !secret twilio_auth_token
+    from_number: !secret twilio_phone_number
+
+  # SECONDARY Twilio SMS notifications (to spouse/family)
+  - platform: twilio_sms
+    name: twilio_sms_secondary
+    account_sid: !secret twilio_account_sid
+    auth_token: !secret twilio_auth_token
+    from_number: !secret twilio_phone_number

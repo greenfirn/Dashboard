@@ -1,0 +1,1110 @@
+/* ==================================================
+   Theme Variables (TEXT COLORS)
+================================================== */
+
+:root {
+    --text-primary: #eee;
+    --text-secondary: #aaa;
+    --text-muted: #666;
+    --text-dim: #808080;
+
+    --text-accent: #4fc3f7;
+    --text-accent-soft: #8FB5C9;
+
+    --text-ok: #90ee90; /* #90ee90 #8bc34a */
+    --text-warn: #ffcc00;
+    --text-error: #ff5252;
+    --text-info: #81d4fa;
+
+    --text-white: #fff;
+}
+
+/* ==================================================
+   Base / Global
+================================================== */
+
+body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: var(--text-primary);
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    margin-bottom: 12px;
+    color: var(--text-accent);
+    font-size: 18px;
+}
+
+/* ==================================================
+   Action Bar
+================================================== */
+
+#action-bar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    height: 38px;
+    padding: 0 12px 0 0;
+
+    background: #141414;
+    border-bottom: 1px solid #2a2a2a;
+    font-size: 13px;
+}
+
+.action-left {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+/* ---- Mode buttons ---- */
+
+.action-modes {
+    display: flex;
+    gap: 6px;
+}
+
+.action-tab {
+    padding: 4px 10px;
+    font-size: 12px;
+    background: #111;
+    border: 1px solid #333;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.action-tab:hover {
+    background: #1a1a1a;
+    color: var(--text-white);
+}
+
+.action-tab.active {
+    background: #1f2937;
+    border-color: #3b82f6;
+    color: var(--text-white);
+}
+
+/* ---- Action buttons ---- */
+
+.action-mode-sep {
+    width: 1px;
+    height: 18px;
+    background: #444;
+    margin: 0 6px;
+    align-self: center;
+    opacity: 0.8;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.action-btn {
+    width: 44px;
+    height: 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 6px;
+    border: 1px solid #2e2e2e;
+    background: #1c1c1c;
+
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.action-btn:hover {
+    background: #252525;
+    border-color: #3a3a3a;
+}
+
+.action-btn:active {
+    background: #2d2d2d;
+}
+
+.action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ---- Reset icon ---- */
+
+.reset-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+
+    border-radius: 50%;
+    background: #b00020;
+    color: var(--text-white);
+    font-size: 11px;
+
+    cursor: pointer;
+    user-select: none;
+}
+
+.reset-btn:hover {
+    background: #ff1744;
+}
+
+.reset-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.action-stats {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-left: 10px;
+
+    font-size: 16px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.action-stats span {
+    opacity: 0.85;
+}
+
+/* ---- Action status output ---- */
+
+.action-status {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.action-output {
+    width: 200px;
+    max-width: 80vw;
+    height: 16px;
+
+    padding: 4px 8px;
+    font-size: 12px;
+
+    background: #0f0f0f;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: var(--text-primary);
+
+    resize: none;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.action-output::placeholder {
+    color: var(--text-muted);
+}
+
+.action-output.collapsed {
+    position: static;
+}
+
+.action-output.expanded {
+    position: absolute;
+    top: 100%;
+    left: 0;
+
+    width: 520px;
+    min-width: 520px;
+    max-width: 70vw;
+    max-height: calc(100vh - 120px);
+
+    height: 200px;
+    z-index: 1000;
+
+    overflow-y: auto;
+    white-space: pre-wrap;
+    background: #0f0f0f;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.action-spacer {
+    flex: 1;
+}
+
+/* ==================================================
+   Command Modal -- 50% width
+================================================== */
+
+/* Command modal dialog - 50% width */
+#cmd-modal .cmd-dialog {
+    display: flex;
+    flex-direction: column;
+    width: 50% !important;
+    max-width: 600px !important;
+    min-width: 400px !important;
+    height: 80vh !important;
+    max-height: 80vh !important;
+    background: #000;
+    border: 1px solid #333;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.cmd-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cmd-modal.hidden {
+    display: none;
+}
+
+/* Command modal dialog - 80% width */
+#cmd-modal .cmd-dialog {
+    display: flex;
+    flex-direction: column;
+    width: 80vw;
+    height: 80vh;
+    max-width: 1200px;
+    background: #000;
+    border: 1px solid #333;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+/* ================= Header ================= */
+
+.cmd-header {
+    flex: 0 0 auto;
+    background: #111;
+    border-bottom: 1px solid #333;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    color: var(--text-white);
+}
+
+.cmd-target {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ================= Input ================= */
+
+#cmd-input {
+    flex: 0 0 auto;
+    height: 250px;
+    min-height: 250px;
+    max-height: 250px;
+    box-sizing: border-box;
+    resize: none;
+    background: #000;
+    color: var(--text-primary);
+    border: none;
+    border-bottom: 1px solid #333;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 10px;
+    outline: none;
+}
+
+/* ================= Body / Output ================= */
+
+.cmd-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: #000;
+}
+
+.cmd-output {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
+    padding: 12px;
+    background: #000;
+    color: var(--text-primary);
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    border-bottom: 1px solid #333;
+}
+
+/* ================= Rows (used by other modals too) ================= */
+
+.cmd-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 14px;
+    border-bottom: 1px solid #333;
+    background: #000;
+}
+
+.cmd-row label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.cmd-row input {
+    background: #111;
+    color: var(--text-primary);
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 13px;
+    outline: none;
+}
+
+.cmd-row input:focus {
+    border-color: var(--text-accent);
+}
+
+/* ================= Footer ================= */
+
+.cmd-footer {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    border-top: 1px solid #333;
+    background: #111;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ================= Buttons ================= */
+
+.cmd-btn {
+    min-width: 44px;
+    height: 28px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #2e2e2e;
+    background: #1c1c1c;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.cmd-btn:hover {
+    background: #252525;
+}
+
+.cmd-btn.ok {
+    border-color: var(--text-accent);
+    color: var(--text-accent);
+}
+
+.cmd-btn.ok:hover {
+    background: #203040;
+}
+
+.cmd-btn.cancel {
+    opacity: 0.85;
+}
+
+.cmd-btn.clear {
+    background: var(--text-accent);
+    color: var(--text-accent);
+    border-color: #555;
+	opacity: 0.85;
+}
+
+.cmd-btn.clear:hover {
+    background: #555;
+    border-color: #666;
+}
+/* ==================================================
+   Flightsheets Modal - 50% width
+================================================== */
+
+/* Flightsheets modal dialog - 50% width */
+#fs-modal .cmd-dialog {
+    width: 80%;
+    max-width: 900px;
+    min-width: 400px;
+    height: 700px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    background: #000;
+    border: 1px solid #333;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+/* Flightsheets body layout */
+#fs-modal .cmd-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    padding: 16px;
+    gap: 12px;
+    background: #000;
+}
+
+/* Flightsheets list */
+#fs-modal .fs-list {
+    height: 200px;
+    min-height: 200px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #333;
+    background: #111;
+    flex: none;
+}
+
+/* Flightsheet items */
+#fs-modal .fs-item {
+    padding: 8px 10px;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+    background: transparent;
+}
+
+#fs-modal .fs-item:hover {
+    background: #1c1c1c;
+}
+
+#fs-modal .fs-item.selected {
+    background: #203040;
+    color: var(--text-accent);
+}
+
+/* Flightsheets textarea - FIXED */
+#fs-modal #fs-raw {
+    height: 240px;
+    min-height: 240px;
+    max-height: 240px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #333;
+    background: #000;
+    color: var(--text-primary);
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    padding: 10px;
+    resize: vertical;  /* Allow vertical resize */
+    box-sizing: border-box;
+    flex: none;
+    display: block;
+    white-space: pre-wrap;  /* Changed from 'pre' to 'pre-wrap' */
+    word-break: break-all;  /* Break long lines */
+    line-height: 1.4;
+}
+
+/* Ensure the body has proper overflow control */
+#fs-modal .cmd-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;  /* Important for flex children */
+    padding: 16px;
+    gap: 12px;
+    background: #000;
+    overflow: hidden;  /* Prevent body from scrolling */
+}
+
+/* FIXED: Flightsheets footer with input above buttons */
+#fs-modal .cmd-footer {
+    display: flex;
+    flex-direction: column;  /* Stack input and buttons vertically */
+    gap: 12px;               /* Space between input and button row */
+    padding: 16px;
+    border-top: 1px solid #333;
+    background: #111;
+    flex: 0 0 auto;
+}
+
+/* Flightsheets input field */
+#fs-modal #fs-name {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #333;
+    background: #111;
+    color: var(--text-primary);
+    box-sizing: border-box;
+    font-size: 14px;
+    border-radius: 4px;
+    outline: none;
+}
+
+#fs-modal #fs-name:focus {
+    border-color: var(--text-accent);
+}
+
+/* Button row container */
+#fs-modal .cmd-btn-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+/* Flightsheet buttons - keep same as command modal */
+#fs-modal .cmd-btn {
+    min-width: 44px;
+    height: 28px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #2e2e2e;
+    background: #1c1c1c;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 13px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, border-color 0.2s;
+    /* Remove any fixed widths */
+    width: auto;
+    flex: 0 0 auto;
+}
+
+/* Button hover states */
+#fs-modal .cmd-btn:hover {
+    background: #252525;
+}
+
+/* Special button styles */
+#fs-modal .cmd-btn.ok {
+    border-color: var(--text-accent);
+    color: var(--text-accent);
+}
+
+#fs-modal .cmd-btn.ok:hover {
+    background: #203040;
+}
+
+#fs-modal .cmd-btn.cancel {
+    opacity: 0.85;
+}
+
+#fs-modal #btn-delete-fs {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+#fs-modal #btn-delete-fs:hover {
+    background-color: #c82333;
+    border-color: #c82333;
+}
+
+#fs-modal #btn-new-fs {
+    border-color: #555;
+    opacity: 0.85;
+}
+
+#fs-modal #btn-clear-fs {
+    border-color: #555;
+    opacity: 0.85;
+}
+
+#fs-modal #btn-clear-fs:hover {
+    background: #555;
+    border-color: #666;
+}
+
+/* Scrollbars for flightsheets only */
+#fs-modal .fs-list::-webkit-scrollbar,
+#fs-modal #fs-raw::-webkit-scrollbar {
+    width: 10px;
+}
+
+#fs-modal .fs-list::-webkit-scrollbar-track,
+#fs-modal #fs-raw::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+#fs-modal .fs-list::-webkit-scrollbar-thumb,
+#fs-modal #fs-raw::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 5px;
+}
+
+/* Firefox scrollbars */
+#fs-modal .fs-list,
+#fs-modal #fs-raw {
+    scrollbar-width: thin;
+    scrollbar-color: #444 #1a1a1a;
+}
+
+/* ==================================================
+   Rig List / Grid (FLEXBOX with Original Widths)
+================================================== */
+.rig-name {
+    color: var(--text-accent-soft);
+}
+
+.rig-row {
+    display: flex;
+    flex-direction: column;
+    color: var(--text-primary);
+    background: #1b1b1b;
+    border: 1px solid #333;
+    border-radius: 6px;
+
+    padding: 6px 10px;
+    margin-bottom: 6px;
+
+    font-size: 14px;
+}
+
+.rig-row.selected {
+    border-color: var(--text-accent);
+    background: #16212b;
+}
+
+.rig-row.selected .rig-name {
+    color: var(--text-accent);
+}
+
+.rig-header {
+    background: #1b1b1b;
+    border: 1px solid #333;
+    border-radius: 6px;
+
+    padding: 6px 10px;
+    margin-bottom: 6px;
+
+    font-size: 14px;
+
+    color: var(--text-accent-soft);
+}
+
+.rig-header .reset-btn {
+    pointer-events: auto;
+}
+
+/* FLEXBOX CONTAINERS */
+.rig-header-grid,
+.rig-main {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    gap: 10px;
+    width: 100%;
+}
+
+.rig-main {
+    cursor: pointer;
+}
+
+/* ==================================================
+   ORIGINAL COLUMN WIDTHS (as min-width when expanded)
+================================================== */
+
+/* Fixed width columns */
+.rig-header-grid > div:first-child,
+.rig-main > div:first-child {
+    width: 100px;
+    flex: 0 0 100px; /* Rig name */
+}
+
+/* LAST COLUMN - Miner */
+.rig-header-grid > div:last-child,
+.rig-main > div:last-child {
+    width: 220px;
+    flex: 1 0 220px; /* ← PROBLEM: Can't shrink */
+}
+
+/* Column 2: Temp (60px) */
+.rig-header-grid > div:nth-child(2),
+.rig-main > div:nth-child(2) {
+    min-width: 20px;
+    flex: 1 1 20px;
+}
+
+/* Column 3: Watts (60px) */
+.rig-header-grid > div:nth-child(3),
+.rig-main > div:nth-child(3) {
+    min-width: 20px;
+    flex: 1 1 20px;
+}
+
+/* Column 4: LA/Algorithm (150px) */
+.rig-header-grid > div:nth-child(4),
+.rig-main > div:nth-child(4) {
+    min-width: 70px;  /* ORIGINAL WIDTH */
+    flex: 2.5 1 70px; /* Gets more space */
+}
+
+/* Column 5: Pool (100px) */
+.rig-header-grid > div:nth-child(5),
+.rig-main > div:nth-child(5) {
+    min-width: 20px;
+    flex: 1.5 1 20px;
+}
+
+/* Column 6: Hash (60px) */
+.rig-header-grid > div:nth-child(6),
+.rig-main > div:nth-child(6) {
+    min-width: 20px;
+    flex: 1 1 20px;
+}
+
+/* Column 7: Shares (60px) */
+.rig-header-grid > div:nth-child(7),
+.rig-main > div:nth-child(7) {
+    min-width: 20px;
+    flex: 1 1 20px;
+}
+
+/* Column 8: Uptime (60px) */
+.rig-header-grid > div:nth-child(8),
+.rig-main > div:nth-child(8) {
+    min-width: 20px;
+    flex: 1 1 20px;
+}
+
+/* Column 9: Fan (50px) */
+.rig-header-grid > div:nth-child(9),
+.rig-main > div:nth-child(9) {
+    min-width: 20px;
+    flex: 0.8 1 20px;
+}
+
+/* Column 10: Speed (70px) */
+.rig-header-grid > div:nth-child(10),
+.rig-main > div:nth-child(10) {
+    min-width: 20px;
+    flex: 1.2 1 20px;
+}
+
+/* Column 11: Memory (70px) */
+.rig-header-grid > div:nth-child(11),
+.rig-main > div:nth-child(11) {
+    min-width: 20px;
+    flex: 1.2 1 20px;
+}
+
+/* Column 12: Core (70px) */
+.rig-header-grid > div:nth-child(12),
+.rig-main > div:nth-child(12) {
+    min-width: 20px;
+    flex: 1.2 1 20px;
+}
+
+/* Column 13: Voltage (40px) */
+.rig-header-grid > div:nth-child(13),
+.rig-main > div:nth-child(13) {
+    min-width: 20px;
+    flex: 0.7 1 20px;
+}
+
+/* Column 14: Efficiency (40px) */
+.rig-header-grid > div:nth-child(14),
+.rig-main > div:nth-child(14) {
+    min-width: 20px;
+    flex: 0.7 1 20px;
+}
+
+/* Column 15: Spacer (20px) */
+.rig-header-grid > div:nth-child(15),
+.rig-main > div:nth-child(15) {
+    width: 20px;
+    flex: 0 0 20px;
+}
+
+/* ==================================================
+   Column Hide System (Simple)
+================================================== */
+
+/* HIDDEN COLUMNS - Use visibility: collapse to remove from layout */
+.column-hidden {
+    visibility: collapse !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    flex: 0 0 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+}
+
+/* Clickable headers */
+.rig-header-grid > div:not(:first-child):not(:last-child):not(:nth-child(15)) {
+    cursor: pointer;
+    user-select: none;
+}
+
+.rig-header-grid > div:not(:first-child):not(:last-child):not(:nth-child(15)):hover {
+    color: var(--text-muted); /* Keep grey text on hover */
+    /* Remove or comment out any background changes */
+    /* background: rgba(59, 130, 246, 0.1); */
+}
+
+/* Metric styling */
+.metric {
+    text-align: right;
+    padding-right: 6px;
+}
+
+.metric-left,
+.title-left {
+    text-align: left;
+    padding-right: 6px;
+}
+
+/* Status colors */
+.status-hot  { color: var(--text-error); }
+.status-warm { color: var(--text-warn); }
+.status-good { color: var(--text-ok); }
+
+.service-ok {
+    color: var(--text-ok);
+}
+
+.service-bad {
+    color: var(--text-dim);
+}
+
+/* Shares colors */
+.shares-perfect { color: #00ff00; }
+.shares-good { color: #90ee90; }
+.shares-warning { color: #ffa500; }
+.shares-bad { color: #ff0000; }
+.status-unknown { color: #888888; }
+
+/* ==================================================
+   Hover Effects
+================================================== */
+
+.rig-row:not(.selected):has(.rig-name:hover) {
+    background: #16212b;
+    border-color: #4fc3f7;
+}
+
+.rig-row:not(.selected):has(.rig-name:hover) .rig-name {
+    color: #4fc3f7;
+}
+
+
+/* ==================================================
+   Docker / Miner Popout (30/70 Split - Left Justified)
+================================================== */
+
+.docker-popover {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-top: 4px;
+    display: flex;
+    gap: 24px;
+    font-size: 13px;
+	color: var(--text-primary); /* Add this - makes all text white */
+}
+
+/* Ensure pop-content has proper flex layout */
+.pop-content {
+    display: flex;
+    gap: 24px;
+    width: 100%;
+    align-items: flex-start;
+}
+
+/* Docker - 30% */
+.pop-docker {
+    flex: 0 0 30%;
+    max-width: 30%;
+    min-width: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+	color: var(--text-primary); /* Ensure white text */
+}
+
+/* Miners - 70% */
+.pop-miners {
+    flex: 1;
+    max-height: 400px;
+    overflow-y: auto;
+	color: var(--text-primary); /* Ensure white text */
+}
+
+.docker-header {
+    font-weight: bold;
+    color: var(--text-info);
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #333;
+    position: sticky;
+    top: 0;
+    background: #111;
+    z-index: 1;
+}
+
+/* ==================================================
+   Docker Container Layout
+================================================== */
+
+.docker-container {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #222;
+	color: var(--text-primary); /* Ensure white text */
+}
+
+.docker-container:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.docker-name-row {
+    color: var(--text-primary); /* Changed from var(--text-accent) to white */
+    margin-bottom: 6px;
+    font-size: 14px;
+    padding-left: 4px;
+}
+
+.docker-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 6px;
+    padding: 0 4px;
+	color: var(--text-primary); /* Ensure white text */
+}
+
+/* Docker Detail Items - These are INSIDE docker-details-grid */
+.docker-detail-item {
+    display: flex;
+    flex-direction: column;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 3px;
+    padding: 4px 6px;
+	color: var(--text-primary); /* Ensure white text */
+}
+
+.docker-detail-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+
+.docker-detail-value {
+    font-size: 12px;
+    color: var(--text-primary); /* Change from #aaa to white */
+    font-weight: bold;
+}
+
+.docker-detail-value.image {
+    color: var(--text-primary); /* Changed from var(--text-accent-soft) to white */
+}
+
+.docker-detail-value.uptime {
+    color: var(--text-primary); /* Changed from var(--text-info) to white */
+}
+/* ==================================================
+   Compact Miner Details (NOT stretched full width)
+================================================== */
+
+/* Main container - inline-block to hug content */
+.miner-details-compact {
+    display: inline-flex;
+    gap: 12px;
+    padding: 6px 10px;
+    background: rgba(30, 30, 30, 0.95);
+    color: white;
+    border-radius: 6px;
+    margin: 4px 0;
+    border: 1px solid #333;
+    align-items: center;
+    flex-wrap: wrap; /* Wrap on small screens */
+}
+
+/* Individual stat item */
+.miner-stat-item {
+    text-align: center;
+    min-width: 70px;
+    padding: 0 3px;
+}
+
+/* Stat label - small and subtle */
+.stat-label {
+    font-size: 0.7em;
+    opacity: 0.7;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+/* Stat value - bold and clear */
+.stat-value {
+    font-size: 0.9em;
+    font-weight: 600;
+    font-family: 'Monaco', 'Consolas', monospace;
+    white-space: nowrap;
+}
+
+/* For single miner rows (remove horizontal layout) */
+.miner-row-horizontal {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #222;
+}
+
+.miner-row-horizontal:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* Remove the old miner-details-grid and replace with compact */
+.miner-details-grid {
+    display: none; /* Hide old stretched layout */
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .miner-details-compact {
+        gap: 8px;
+        padding: 5px 8px;
+    }
+    
+    .miner-stat-item {
+        min-width: 60px;
+    }
+}
+
+/* Make sure this is SUPER specific and at the END of your CSS */
+.rig-main > div.column-hidden,
+.rig-header-grid > div.column-hidden {
+    flex: 0 0 0px !important;
+    min-width: 0px !important;
+    max-width: 0px !important;
+    width: 0px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+}
