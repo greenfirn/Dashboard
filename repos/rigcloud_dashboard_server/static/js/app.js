@@ -14,12 +14,16 @@ let hiddenColumns = new Set(); // Tracks hidden column indices
 
 let API = "";
 
+// Determine base path (e.g. "", "/dashboard")
+const BASE_PATH = location.pathname.replace(/\/$/, "");
+
+
 // =====================================================
 // INITIALIZATION & EVENT LISTENERS
 // =====================================================
 
 async function loadConfig() {
-    const res = await fetch("/api/config");
+    const res = await fetch(`${BASE_PATH}/api/config`);
     if (!res.ok) {
         throw new Error("Failed to load app config");
     }
