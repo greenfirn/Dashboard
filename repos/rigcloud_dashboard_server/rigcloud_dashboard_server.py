@@ -65,7 +65,7 @@ if MQTT_MODE == "local":
     MQTT_KEY  = None
     MQTT_CA   = None
 
-    BASE_PATH = os.getenv("BASE_PATH", "/dashboard")
+    BASE_PATH = os.getenv("BASE_PATH", "")
 
 elif MQTT_MODE == "pi":
     MQTT_BROKER = os.getenv("MQTT_HOST", "mosquitto")
@@ -77,7 +77,7 @@ elif MQTT_MODE == "pi":
     MQTT_KEY  = None
     MQTT_CA   = None
 
-    BASE_PATH = os.getenv("BASE_PATH", "/dashboard")
+    BASE_PATH = os.getenv("BASE_PATH", "")
 
 elif MQTT_MODE == "aws":
 
@@ -90,7 +90,7 @@ elif MQTT_MODE == "aws":
     MQTT_KEY  = os.getenv("AWS_MQTT_KEY",  "/certs/private.pem.key")
     MQTT_CA   = os.getenv("AWS_MQTT_CA",   "/certs/AmazonRootCA1.pem")
 
-    BASE_PATH = os.getenv("BASE_PATH", "/dashboard")
+    BASE_PATH = os.getenv("BASE_PATH", "")
 
 else:
     raise RuntimeError(f"Invalid MQTT_MODE: {MQTT_MODE}")
@@ -668,11 +668,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount(
-    "/static",
-    StaticFiles(directory=STATIC_DIR),
-    name="static"
-)
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
@@ -684,10 +679,22 @@ def get_config():
         "basePath": BASE_PATH
     }
 
-if BASE_PATH:  # If BASE_PATH is set (in either mode)
+if BASE_PATH:
     app.include_router(router, prefix=BASE_PATH)
+
+    app.mount(
+        f"{BASE_PATH}/static",  # Mount at /dashboard/static
+        StaticFiles(directory=STATIC_DIR),
+        name="static"
+    )
 else:
     app.include_router(router)
+
+    app.mount(
+        "/static",
+        StaticFiles(directory=STATIC_DIR),
+        name="static"
+    )
 
 # ================================================================
 # MQTT CALLBACKS
