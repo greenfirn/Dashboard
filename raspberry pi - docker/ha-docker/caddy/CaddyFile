@@ -17,7 +17,7 @@ bhassio.duckdns.org {
     # RigCloud WebSocket (NO STRIP, NO AUTH)
     ####################################
     handle /dashboard/ws* {
-        uri strip_prefix /dashboard
+        #uri strip_prefix /dashboard
         reverse_proxy 127.0.0.1:8765
     }
 
@@ -29,10 +29,14 @@ bhassio.duckdns.org {
             admin $2a$14$kJxQToXk0YWQykFvymXGbO2ynbHEVQ35Jyybnr9Q8OAq8Vwsb1TNG
         }
 
-        uri strip_prefix /dashboard
+        #uri strip_prefix /dashboard
         reverse_proxy 127.0.0.1:8765
     }
 
+    # Add before or after /dashboard/* handler
+    handle /favicon.ico {
+        reverse_proxy 127.0.0.1:8765
+    }
     ####################################
     # Home Assistant (DEFAULT ROOT)
     ####################################
@@ -66,7 +70,7 @@ bhassio.duckdns.org {
     # RigCloud (LOCAL, STRIP)
     ####################################
     handle @lan_only {
-        uri strip_prefix /dashboard
+        #uri strip_prefix /dashboard
         reverse_proxy 127.0.0.1:8765
     }
 
